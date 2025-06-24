@@ -195,3 +195,67 @@ exports.forwardEnquiryToDM = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to forward enquiry', error: err.message });
   }
 };
+
+
+
+
+
+exports.updateEnquiry = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const enquiry = await Enquiry.findByPk(id);
+    if (!enquiry) {
+      return res.status(404).json({ success: false, message: 'Enquiry not found' });
+    }
+
+    // Update text fields
+    const updateData = {
+      patient_name: req.body.patient_name,
+      ayushman_card_number: req.body.ayushman_card_number,
+      aadhar_card_number: req.body.aadhar_card_number,
+      pan_card_number: req.body.pan_card_number,
+      medical_condition: req.body.medical_condition,
+      hospital_id: req.body.hospital_id,
+      source_hospital_id: req.body.source_hospital_id,
+      district_id: req.body.district_id,
+      contact_name: req.body.contact_name,
+      contact_phone: req.body.contact_phone,
+      contact_email: req.body.contact_email,
+    };
+
+    await enquiry.update(updateData);
+
+    // Update documents (delete existing and create new ones if provided)
+    if (req.files) {
+      await Document.destroy({ where: { enquiry_id: id } });
+      const docsToCreate = [];
+      for (const [document_type, files] of Object.entries(req.files)) {
+        files.forEach(file => {
+          docsToCreate.push({
+            enquiry_id: id,
+            document_type,
+            file_path: file.path,
+          });
+        });
+      }
+      if (docsToCreate.length) {
+        await Document.bulkCreate(docsToCreate);
+      }
+    }
+
+    // Fetch updated enquiry with associations
+    const updatedEnquiry = await Enquiry.findByPk(id, {
+      include: [
+        { model: Document, as: 'documents', attributes: ['document_id', 'document_type', 'file_path'] },
+        { model: Hospital, as: 'hospital', attributes: ['hospital_id', ['hospital_name', 'name']] },
+        { model: Hospital, as: 'sourceHospital', attributes: ['hospital_id', ['hospital_name', 'name']] },
+        { model: District, as: 'district', attributes: ['district_id', 'district_name'] },
+      ],
+    });
+
+    res.json({ success: true, message: 'Enquiry updated successfully', data: updatedEnquiry });
+  } catch (err) {
+    console.error('Error updating enquiry:', err);
+    res.status(500).json({ success: false, message: 'Failed to update enquiry', error: err.message });
+  }
+};

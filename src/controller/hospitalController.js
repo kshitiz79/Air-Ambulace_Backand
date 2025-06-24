@@ -4,7 +4,13 @@ const hospitalController = {
   async getAllHospitals(req, res) {
     try {
       const hospitals = await Hospital.findAll({
-        attributes: ['hospital_id', ['hospital_name', 'name']], // Alias hospital_name as name
+        // Remove attributes restriction to include all hospital fields
+        // Keep alias for hospital_name as name for frontend consistency
+        attributes: {
+          include: [['hospital_name', 'name']],
+          // Optionally exclude hospital_name to avoid duplication
+          exclude: ['hospital_name'],
+        },
         include: [
           {
             model: District,
