@@ -6,9 +6,16 @@ const sequelize = require("./src/config/database");
 dotenv.config();
 const app = express();
 
-// Middleware
-app.use(express.json());
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true })); 
+app.use(cors({
+  origin: [
+    'https://airambulance.jetserveaviation.com',
+    'http://localhost:5173',
+    'https://www.jetserveaviation.com'
+  ],
+  credentials: true
+}));
 
 // Routes
 const hospitalRoutes = require('./src/routes/hospitalRoute');
