@@ -1,74 +1,129 @@
+// controller/enquiryController.js
 const { Enquiry, Document, User, Hospital, District } = require('../model');
 const { ValidationError, ForeignKeyConstraintError } = require('sequelize');
 
 exports.createEnquiry = async (req, res) => {
   try {
     const {
-      patient_name, ayushman_card_number, aadhar_card_number, pan_card_number, medical_condition,
-      hospital_id, source_hospital_id, district_id, contact_name, contact_phone, contact_email,
-      submitted_by_user_id, father_spouse_name, age, gender, address, chief_complaint,
-      general_condition, vitals, referring_physician_name, referring_physician_designation,
-      referral_note, transportation_category, air_transport_type, recommending_authority_name,
-      recommending_authority_designation, approval_authority_name, approval_authority_designation,
-      bed_availability_confirmed, als_ambulance_arranged, ambulance_registration_number,
+      patient_name, ayushman_card_number, aadhar_card_number, pan_card_number,
+      medical_condition, hospital_id, source_hospital_id, district_id,
+      contact_name, contact_phone, contact_email, submitted_by_user_id,
+      father_spouse_name, age, gender, address, chief_complaint,
+      general_condition, vitals, referring_physician_name,
+      referring_physician_designation, referral_note, transportation_category,
+      air_transport_type, recommending_authority_name,
+      recommending_authority_designation, approval_authority_name,
+      approval_authority_designation, bed_availability_confirmed,
+      als_ambulance_arranged, ambulance_registration_number,
       ambulance_contact, medical_team_note, remarks
     } = req.body;
 
-    // Validate identity fields
-    if (!ayushman_card_number && (!aadhar_card_number || !pan_card_number)) {
-      return res.status(400).json({ success: false, message: 'Either ayushman_card_number or both aadhar_card_number and pan_card_number must be provided' });
-    }
-
-    // Create enquiry
-    const enquiry = await Enquiry.create({
-      patient_name, ayushman_card_number, aadhar_card_number, pan_card_number, medical_condition,
-      hospital_id, source_hospital_id, district_id, contact_name, contact_phone, contact_email,
-      submitted_by_user_id, father_spouse_name, age, gender, address, chief_complaint,
-      general_condition, vitals, referring_physician_name, referring_physician_designation,
-      referral_note, transportation_category, air_transport_type, recommending_authority_name,
-      recommending_authority_designation, approval_authority_name, approval_authority_designation,
-      bed_availability_confirmed, als_ambulance_arranged, ambulance_registration_number,
-      ambulance_contact, medical_team_note, remarks
+    console.log('Creating enquiry with data:', {
+      patient_name, hospital_id, source_hospital_id, district_id,
+      contact_name, contact_phone, contact_email, submitted_by_user_id,
+      father_spouse_name, age, gender, address, chief_complaint,
+      general_condition, vitals, transportation_category,
+      air_transport_type, ayushman_card_number,
+      aadhar_card_number, pan_card_number,
+      bed_availability_confirmed, als_ambulance_arranged
     });
 
-    // Process uploaded documents
+    // identity-field check is now in model validation
+
+    const enquiry = await Enquiry.create({
+      patient_name,
+      ayushman_card_number,
+      aadhar_card_number,
+      pan_card_number,
+      medical_condition,
+      hospital_id,
+      source_hospital_id,
+      district_id,
+      contact_name,
+      contact_phone,
+      contact_email,
+      submitted_by_user_id,
+      father_spouse_name,
+      age,
+      gender,
+      address,
+      chief_complaint,
+      general_condition,
+      vitals,
+      referring_physician_name,
+      referring_physician_designation,
+      referral_note,
+      transportation_category,
+      air_transport_type,
+      recommending_authority_name,
+      recommending_authority_designation,
+      approval_authority_name,
+      approval_authority_designation,
+      bed_availability_confirmed: bed_availability_confirmed === '1' || bed_availability_confirmed === true,
+      als_ambulance_arranged: als_ambulance_arranged === '1' || als_ambulance_arranged === true,
+      ambulance_registration_number,
+      ambulance_contact,
+      medical_team_note,
+      remarks
+    });
+
+    // handle file uploads
     if (req.files) {
-      const docsToCreate = [];
-      for (const [document_type, files] of Object.entries(req.files)) {
-        if (!['AYUSHMAN_CARD', 'ID_PROOF', 'MEDICAL_REPORT', 'OTHER'].includes(document_type)) {
-          return res.status(400).json({ success: false, message: `Invalid document_type: ${document_type}` });
+      const docs = [];
+      for (const [type, files] of Object.entries(req.files)) {
+        if (!['AYUSHMAN_CARD','ID_PROOF','MEDICAL_REPORT','OTHER'].includes(type)) {
+          return res.status(400).json({ success: false, message: `Invalid document_type: ${type}` });
         }
         files.forEach(file => {
-          docsToCreate.push({
+          docs.push({
             enquiry_id: enquiry.enquiry_id,
-            document_type,
-            file_path: file.path,
+            document_type: type,
+            file_path: file.path
           });
         });
       }
-      if (docsToCreate.length) {
-        await Document.bulkCreate(docsToCreate);
-      }
+      if (docs.length) await Document.bulkCreate(docs);
     }
 
-    res.status(201).json({ success: true, data: enquiry });
+    const created = await Enquiry.findByPk(enquiry.enquiry_id, {
+      include: [
+        { model: Document, as: 'documents', attributes: ['document_id','document_type','file_path'] },
+        { model: User, as: 'submittedBy', attributes: ['user_id'] },
+        { model: Hospital, as: 'hospital', attributes: ['hospital_id',['hospital_name','name']] },
+        { model: Hospital, as: 'sourceHospital', attributes: ['hospital_id',['hospital_name','name']] },
+        { model: District, as: 'district', attributes: ['district_id','district_name'] }
+      ]
+    });
+
+    res.status(201).json({ success: true, data: created });
   } catch (err) {
     if (err instanceof ValidationError) {
-      return res.status(400).json({ success: false, message: 'Validation error', error: err.errors.map(e => e.message) });
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: err.errors.map(e => ({ field: e.path, message: e.message }))
+      });
     }
     if (err instanceof ForeignKeyConstraintError) {
-      return res.status(400).json({ success: false, message: 'Invalid reference ID (e.g., hospital_id, user_id, or district_id)', error: err.message });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid reference ID (e.g., hospital_id, user_id, or district_id)',
+        error: err.message
+      });
     }
-    console.error('Create enquiry error:', err);
+    console.error(err);
     res.status(500).json({ success: false, message: 'Failed to create enquiry', error: err.message });
   }
 };
+
+// (The rest of your getAll, getById, update, delete, verify, approve/reject, forward handlers remain unchanged)
+
 
 exports.getAllEnquiries = async (req, res) => {
   try {
     const enquiries = await Enquiry.findAll({
       attributes: [
-        'enquiry_id', 'patient_name', 'status', 'hospital_id', 'source_hospital_id', 'district_id',
+        'enquiry_id', 'enquiry_code', 'patient_name', 'status', 'hospital_id', 'source_hospital_id', 'district_id',
         'medical_condition', 'ayushman_card_number', 'contact_name', 'contact_phone', 'contact_email'
       ],
       include: [
@@ -91,6 +146,16 @@ exports.getEnquiryById = async (req, res) => {
   try {
     const { id } = req.params;
     const enquiry = await Enquiry.findByPk(id, {
+      attributes: [
+        'enquiry_id', 'enquiry_code', 'patient_name', 'status', 'hospital_id', 'source_hospital_id', 'district_id',
+        'medical_condition', 'ayushman_card_number', 'contact_name', 'contact_phone', 'contact_email',
+        'father_spouse_name', 'age', 'gender', 'address', 'chief_complaint', 'general_condition',
+        'vitals', 'referring_physician_name', 'referring_physician_designation', 'referral_note',
+        'transportation_category', 'air_transport_type', 'recommending_authority_name',
+        'recommending_authority_designation', 'approval_authority_name', 'approval_authority_designation',
+        'bed_availability_confirmed', 'als_ambulance_arranged', 'ambulance_registration_number',
+        'ambulance_contact', 'medical_team_note', 'remarks'
+      ],
       include: [
         { model: Document, as: 'documents', attributes: ['document_id', 'document_type', 'file_path'] },
         { model: User, as: 'submittedBy', attributes: ['user_id'] },

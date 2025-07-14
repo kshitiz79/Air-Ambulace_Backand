@@ -22,7 +22,7 @@ const hospitalRoutes = require('./src/routes/hospitalRoute');
 const authRoutes = require("./src/routes/authRoutes");
 const userRoutes = require("./src/routes/userRoutes");
 const districtRoutes = require("./src/routes/districtRoutes");
-
+const caseQueryRoutes = require('./src/routes/caseQueryRoutes');
 const enquiryRoutes = require('./src/routes/enquiryRoute');
 app.use('/api/enquiries', enquiryRoutes);
 
@@ -31,6 +31,8 @@ app.use('/api/hospitals', hospitalRoutes);
 app.use("/api/districts", districtRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+
+app.use('/api/case-queries', caseQueryRoutes);
 
 // Root Route
 app.get("/", (req, res) => {

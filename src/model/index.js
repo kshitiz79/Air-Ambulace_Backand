@@ -4,6 +4,7 @@ const Hospital = require('./Hospital');
 const Enquiry = require('./Enquiry');
 const Document = require('./Document');
 const User = require('./User');
+const CaseQuery = require('./CaseQuery');
 
 const models = {
   District,
@@ -11,6 +12,7 @@ const models = {
   Enquiry,
   Document,
   User,
+  CaseQuery,
 };
 
 // Define associations
