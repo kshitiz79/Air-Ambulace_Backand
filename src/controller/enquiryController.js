@@ -63,7 +63,7 @@ exports.createEnquiry = async (req, res) => {
     if (req.files) {
       const docs = [];
       for (const [type, files] of Object.entries(req.files)) {
-        if (!['AYUSHMAN_CARD','ID_PROOF','MEDICAL_REPORT','OTHER'].includes(type)) {
+        if (!['AYUSHMAN_CARD', 'ID_PROOF', 'MEDICAL_REPORT', 'OTHER'].includes(type)) {
           return res.status(400).json({ success: false, message: `Invalid document_type: ${type}` });
         }
         files.forEach(file => {
@@ -79,11 +79,11 @@ exports.createEnquiry = async (req, res) => {
 
     const created = await Enquiry.findByPk(enquiry.enquiry_id, {
       include: [
-        { model: Document, as: 'documents', attributes: ['document_id','document_type','file_path'] },
+        { model: Document, as: 'documents', attributes: ['document_id', 'document_type', 'file_path'] },
         { model: User, as: 'submittedBy', attributes: ['user_id'] },
-        { model: Hospital, as: 'hospital', attributes: ['hospital_id',['hospital_name','name']] },
-        { model: Hospital, as: 'sourceHospital', attributes: ['hospital_id',['hospital_name','name']] },
-        { model: District, as: 'district', attributes: ['district_id','district_name'] }
+        { model: Hospital, as: 'hospital', attributes: ['hospital_id', ['hospital_name', 'name']] },
+        { model: Hospital, as: 'sourceHospital', attributes: ['hospital_id', ['hospital_name', 'name']] },
+        { model: District, as: 'district', attributes: ['district_id', 'district_name'] }
       ]
     });
 
@@ -227,11 +227,24 @@ exports.updateEnquiry = async (req, res) => {
 exports.deleteEnquiry = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await Enquiry.destroy({ where: { enquiry_id: id } });
-    if (!deleted) {
+    
+    // Check if enquiry exists
+    const enquiry = await Enquiry.findByPk(id);
+    if (!enquiry) {
       return res.status(404).json({ success: false, message: 'Enquiry not found' });
     }
-    res.json({ success: true, message: 'Enquiry deleted successfully' });
+
+    // Delete related records first to avoid foreign key constraint errors
+    // Delete documents associated with this enquiry
+    await Document.destroy({ where: { enquiry_id: id } });
+    
+    // Delete case escalations associated with this enquiry
+    await CaseEscalation.destroy({ where: { enquiry_id: id } });
+    
+    // Now delete the enquiry
+    const deleted = await Enquiry.destroy({ where: { enquiry_id: id } });
+    
+    res.json({ success: true, message: 'Enquiry and all related records deleted successfully' });
   } catch (err) {
     console.error('Delete enquiry error:', err);
     res.status(500).json({ success: false, message: 'Failed to delete enquiry', error: err.message });
@@ -351,10 +364,10 @@ exports.escalateEnquiry = async (req, res) => {
       ],
     });
 
-    res.status(201).json({ 
-      success: true, 
-      message: 'Enquiry escalated successfully', 
-      data: createdEscalation 
+    res.status(201).json({
+      success: true,
+      message: 'Enquiry escalated successfully',
+      data: createdEscalation
     });
   } catch (err) {
     if (err instanceof ValidationError) {
