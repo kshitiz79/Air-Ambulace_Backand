@@ -80,7 +80,7 @@ const getUserById = async (req, res) => {
 const updateUserProfile = async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, email, phone, full_name, address } = req.body;
+    const { username, email, phone, full_name, address, role, district_id, status } = req.body;
 
     // Check if user exists
     const user = await User.findByPk(id);
@@ -118,6 +118,17 @@ const updateUserProfile = async (req, res) => {
       }
     }
 
+    // Validate district_id if provided
+    if (district_id) {
+      const district = await District.findByPk(district_id);
+      if (!district) {
+        return res.status(400).json({
+          message: "Invalid district ID",
+          success: false
+        });
+      }
+    }
+
     // Update user
     const updateData = {};
     if (username) updateData.username = username;
@@ -125,6 +136,9 @@ const updateUserProfile = async (req, res) => {
     if (phone) updateData.phone = phone;
     if (full_name) updateData.full_name = full_name;
     if (address) updateData.address = address;
+    if (role) updateData.role = role;
+    if (district_id !== undefined) updateData.district_id = district_id || null; // Allow setting to null
+    if (status) updateData.status = status;
 
     await user.update(updateData);
 

@@ -74,8 +74,11 @@ const Enquiry = sequelize.define('Enquiry', {
   // model-level validation of identity fields
   validate: {
     checkIdentityFields() {
-      if (!this.ayushman_card_number && (!this.aadhar_card_number || !this.pan_card_number)) {
-        throw new Error('Either ayushman_card_number or both aadhar_card_number and pan_card_number must be provided');
+      // Skip validation during updates if identity fields are not being changed
+      if (this.isNewRecord || this.changed('ayushman_card_number') || this.changed('aadhar_card_number') || this.changed('pan_card_number')) {
+        if (!this.ayushman_card_number && (!this.aadhar_card_number || !this.pan_card_number)) {
+          throw new Error('Either ayushman_card_number or both aadhar_card_number and pan_card_number must be provided');
+        }
       }
     }
   },

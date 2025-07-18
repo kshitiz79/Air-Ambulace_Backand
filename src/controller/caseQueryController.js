@@ -75,36 +75,55 @@ exports.respondToCaseQuery = async (req, res) => {
 exports.getAllCaseQueries = async (req, res) => {
   try {
     const { enquiry_id } = req.query;
+    const { user } = req;
+    
     console.log('getAllCaseQueries - Query params:', { enquiry_id });
-    const where = enquiry_id ? { enquiry_id } : {};
+    console.log('getAllCaseQueries - User:', user ? { user_id: user.user_id, role: user.role } : 'No user');
+    
+    let where = enquiry_id ? { enquiry_id } : {};
+    let includeOptions = [
+      {
+        model: Enquiry,
+        as: 'enquiry',
+        attributes: ['enquiry_id', 'enquiry_code', 'patient_name', 'status', 'submitted_by_user_id']
+      },
+      {
+        model: User,
+        as: 'raisedBy',
+        attributes: ['user_id', 'full_name', 'role']
+      },
+      {
+        model: User,
+        as: 'respondedBy',
+        attributes: ['user_id', 'full_name', 'role'],
+        required: false
+      },
+    ];
+
+    // If user is CMO, filter to show only queries related to their enquiries
+    if (user && user.role === 'CMO') {
+      includeOptions[0].where = { submitted_by_user_id: user.user_id };
+      console.log('CMO filtering applied - showing only queries for enquiries created by user_id:', user.user_id);
+    }
+
     const caseQueries = await CaseQuery.findAll({
       where,
       attributes: [
         'query_id', 'query_code', 'enquiry_id', 'query_text',
         'response_text', 'created_at', 'responded_at'
       ],
-      include: [
-        {
-          model: Enquiry,
-          as: 'enquiry',
-          attributes: ['enquiry_id', 'enquiry_code', 'patient_name', 'status']
-        },
-        {
-          model: User,
-          as: 'raisedBy',
-          attributes: ['user_id', 'full_name', 'role']
-        },
-        {
-          model: User,
-          as: 'respondedBy',
-          attributes: ['user_id', 'full_name', 'role'],
-          required: false
-        },
-      ],
+      include: includeOptions,
       order: [['created_at', 'DESC']],
     });
+    
     console.log('Fetched queries:', caseQueries.length);
-    res.json({ success: true, data: caseQueries });
+    
+    res.json({ 
+      success: true, 
+      data: caseQueries,
+      filtered: user && user.role === 'CMO',
+      user_id: user ? user.user_id : null
+    });
   } catch (err) {
     console.error('Error fetching case queries:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch case queries', error: err.message });
@@ -113,33 +132,45 @@ exports.getAllCaseQueries = async (req, res) => {
 exports.getCaseQueryById = async (req, res) => {
   try {
     const { query_id } = req.params;
+    const { user } = req;
+    
+    let includeOptions = [
+      {
+        model: Enquiry,
+        as: 'enquiry',
+        attributes: ['enquiry_id','enquiry_code','patient_name','status', 'submitted_by_user_id']
+      },
+      {
+        model: User,
+        as: 'raisedBy',
+        attributes: ['user_id','full_name','role']
+      },
+      {
+        model: User,
+        as: 'respondedBy',
+        attributes: ['user_id','full_name','role'],
+        required: false
+      },
+    ];
+
+    // If user is CMO, filter to show only queries related to their enquiries
+    if (user && user.role === 'CMO') {
+      includeOptions[0].where = { submitted_by_user_id: user.user_id };
+    }
+
     const caseQuery = await CaseQuery.findByPk(query_id, {
       attributes: [
         'query_id','query_code','enquiry_id','query_text',
         'response_text','created_at','responded_at'
       ],
-      include: [
-        {
-          model: Enquiry,
-          as: 'enquiry',
-          attributes: ['enquiry_id','enquiry_code','patient_name','status']
-        },
-        {
-          model: User,
-          as: 'raisedBy',
-          attributes: ['user_id','full_name','role']
-        },
-        {
-          model: User,
-          as: 'respondedBy',
-          attributes: ['user_id','full_name','role'],
-          required: false
-        },
-      ],
+      include: includeOptions,
     });
 
     if (!caseQuery) {
-      return res.status(404).json({ success: false, message: 'Case query not found' });
+      const message = user && user.role === 'CMO' 
+        ? 'Case query not found or you do not have access to it' 
+        : 'Case query not found';
+      return res.status(404).json({ success: false, message });
     }
 
     res.json({ success: true, data: caseQuery });

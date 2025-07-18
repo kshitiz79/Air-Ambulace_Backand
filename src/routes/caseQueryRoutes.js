@@ -8,7 +8,7 @@ const authMiddleware = require('./../middleware/authMiddleware');
 
 router.post('/', authMiddleware, caseQueryController.createCaseQuery);
 router.patch('/:query_id/respond', authMiddleware, caseQueryController.respondToCaseQuery);
-router.get('/',  caseQueryController.getAllCaseQueries);
+router.get('/', authMiddleware, caseQueryController.getAllCaseQueries);
 router.get('/:query_id', authMiddleware, caseQueryController.getCaseQueryById);
 
 module.exports = router;
