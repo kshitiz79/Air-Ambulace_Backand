@@ -10,5 +10,6 @@ router.delete('/:id', ctl.deleteEnquiry);
 router.patch('/:id/verify', ctl.verifyEnquiry);
 router.patch('/:id/forward', ctl.forwardEnquiryToDM); // New route
 router.patch('/:id/approve-reject', ctl.approveOrRejectEnquiry);
+router.post('/:id/escalate', ctl.escalateEnquiry); // New escalate route
 router.patch('/:id', upload, ctl.updateEnquiry);
 module.exports = router;

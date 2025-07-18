@@ -5,6 +5,7 @@ const Enquiry = require('./Enquiry');
 const Document = require('./Document');
 const User = require('./User');
 const CaseQuery = require('./CaseQuery');
+const CaseEscalation = require('./CaseEscalation');
 
 const models = {
   District,
@@ -13,6 +14,7 @@ const models = {
   Document,
   User,
   CaseQuery,
+  CaseEscalation,
 };
 
 // Define associations

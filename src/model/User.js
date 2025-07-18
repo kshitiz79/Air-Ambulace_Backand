@@ -38,7 +38,19 @@ const User = sequelize.define("User", {
     type: DataTypes.BIGINT,
     allowNull: true
   },
-
+  address: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  profile_picture: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  status: {
+    type: DataTypes.ENUM,
+    values: ['active', 'inactive', 'suspended'],
+    defaultValue: 'active'
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
@@ -51,5 +63,14 @@ const User = sequelize.define("User", {
   tableName: 'users',
   timestamps: false
 });
+
+// Define associations
+User.associate = (models) => {
+  // Association with District
+  User.belongsTo(models.District, {
+    foreignKey: 'district_id',
+    as: 'district'
+  });
+};
 
 module.exports = User;

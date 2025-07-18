@@ -79,16 +79,23 @@ const login = async (req, res) => {
   const { username, password } = req.body;
 
   try {
+    console.log('Login attempt for username:', username);
+    
     const user = await User.findOne({ where: { username } });
+    console.log('User found:', user ? 'Yes' : 'No');
 
     if (!user) {
+      console.log('User not found in database');
       return res.status(404).json({
         message: "User not found",
         success: false
       });
     }
 
+    console.log('Comparing password...');
     const isMatch = await bcrypt.compare(password, user.password_hash);
+    console.log('Password match:', isMatch);
+    
     if (!isMatch) {
       return res.status(400).json({
         message: "Invalid credentials",
@@ -96,21 +103,25 @@ const login = async (req, res) => {
       });
     }
 
+    console.log('Generating token for user:', user.user_id, 'role:', user.role);
     const token = generateToken(user.user_id, user.role);
 
+    console.log('Login successful, sending response');
     return res.status(200).json({
       message: "Login successful",
       success: true,
       token,
       role: user.role, // Already normalized in DB
       district_id: user.district_id,
-      userId: user.user_id
+      userId: user.user_id,
+      full_name: user.full_name
     });
   } catch (error) {
+    console.error('Login error:', error);
     return res.status(500).json({
       message: "Error logging in",
       success: false,
-      error
+      error: error.message
     });
   }
 };

@@ -19,7 +19,7 @@ const hospitalController = {
           },
         ],
       });
-      console.log('Fetched hospitals:', JSON.stringify(hospitals, null, 2)); // Debug log
+      // Hospitals fetched successfully
       res.json({ success: true, data: hospitals });
     } catch (error) {
       console.error('Error fetching hospitals:', error);

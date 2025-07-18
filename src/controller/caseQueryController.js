@@ -4,15 +4,15 @@ const { ValidationError, ForeignKeyConstraintError } = require('sequelize');
 exports.createCaseQuery = async (req, res) => {
   try {
     const { enquiry_id, query_text } = req.body;
-    console.log('createCaseQuery - Request body:', { enquiry_id, query_text });
+    // Creating case query with provided data
 
     if (!req.user) {
-      console.log('createCaseQuery - No user in request');
+      // No user in request
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
     const raised_by_user_id = req.user.user_id;
-    console.log('createCaseQuery - User:', { raised_by_user_id });
+    // User authenticated successfully
 
     if (!enquiry_id || !query_text) {
       return res.status(400).json({ success: false, message: 'enquiry_id and query_text are required' });

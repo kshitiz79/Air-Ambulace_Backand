@@ -1,5 +1,5 @@
 // controller/enquiryController.js
-const { Enquiry, Document, User, Hospital, District } = require('../model');
+const { Enquiry, Document, User, Hospital, District, CaseEscalation } = require('../model');
 const { ValidationError, ForeignKeyConstraintError } = require('sequelize');
 
 exports.createEnquiry = async (req, res) => {
@@ -18,15 +18,7 @@ exports.createEnquiry = async (req, res) => {
       ambulance_contact, medical_team_note, remarks
     } = req.body;
 
-    console.log('Creating enquiry with data:', {
-      patient_name, hospital_id, source_hospital_id, district_id,
-      contact_name, contact_phone, contact_email, submitted_by_user_id,
-      father_spouse_name, age, gender, address, chief_complaint,
-      general_condition, vitals, transportation_category,
-      air_transport_type, ayushman_card_number,
-      aadhar_card_number, pan_card_number,
-      bed_availability_confirmed, als_ambulance_arranged
-    });
+    // Creating enquiry with provided data
 
     // identity-field check is now in model validation
 
@@ -304,6 +296,83 @@ exports.forwardEnquiryToDM = async (req, res) => {
   } catch (err) {
     console.error('Forward enquiry error:', err);
     res.status(500).json({ success: false, message: 'Failed to forward enquiry', error: err.message });
+  }
+};
+
+exports.escalateEnquiry = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { escalation_reason, escalated_to, escalated_by_user_id } = req.body;
+
+    // Validate required fields
+    if (!escalation_reason || !escalated_to || !escalated_by_user_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: escalation_reason, escalated_to, escalated_by_user_id'
+      });
+    }
+
+    // Check if enquiry exists
+    const enquiry = await Enquiry.findByPk(id);
+    if (!enquiry) {
+      return res.status(404).json({ success: false, message: 'Enquiry not found' });
+    }
+
+    // Check if enquiry is already escalated
+    if (enquiry.status === 'ESCALATED') {
+      return res.status(400).json({ success: false, message: 'Enquiry already escalated' });
+    }
+
+    // Create escalation record
+    const escalation = await CaseEscalation.create({
+      enquiry_id: id,
+      escalation_reason,
+      escalated_to,
+      escalated_by_user_id,
+      status: 'PENDING'
+    });
+
+    // Update enquiry status to ESCALATED
+    await enquiry.update({ status: 'ESCALATED' });
+
+    // Fetch the created escalation with associations
+    const createdEscalation = await CaseEscalation.findByPk(escalation.escalation_id, {
+      include: [
+        {
+          model: Enquiry,
+          as: 'enquiry',
+          attributes: ['enquiry_id', 'enquiry_code', 'patient_name', 'status']
+        },
+        {
+          model: User,
+          as: 'escalatedBy',
+          attributes: ['user_id', 'username', 'email']
+        }
+      ],
+    });
+
+    res.status(201).json({ 
+      success: true, 
+      message: 'Enquiry escalated successfully', 
+      data: createdEscalation 
+    });
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: err.errors.map(e => ({ field: e.path, message: e.message }))
+      });
+    }
+    if (err instanceof ForeignKeyConstraintError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid reference ID (enquiry_id or escalated_by_user_id)',
+        error: err.message
+      });
+    }
+    console.error('Escalate enquiry error:', err);
+    res.status(500).json({ success: false, message: 'Failed to escalate enquiry', error: err.message });
   }
 };
 

@@ -24,14 +24,14 @@ const userRoutes = require("./src/routes/userRoutes");
 const districtRoutes = require("./src/routes/districtRoutes");
 const caseQueryRoutes = require('./src/routes/caseQueryRoutes');
 const enquiryRoutes = require('./src/routes/enquiryRoute');
+const caseEscalationRoutes = require('./src/routes/caseEscalationRoutes');
+
 app.use('/api/enquiries', enquiryRoutes);
-
-
+app.use('/api/case-escalations', caseEscalationRoutes);
 app.use('/api/hospitals', hospitalRoutes);
 app.use("/api/districts", districtRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
-
 app.use('/api/case-queries', caseQueryRoutes);
 
 // Root Route

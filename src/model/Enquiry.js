@@ -102,6 +102,7 @@ Enquiry.associate = models => {
   Enquiry.belongsTo(models.Hospital, { foreignKey: 'source_hospital_id', as: 'sourceHospital' });
   Enquiry.belongsTo(models.District, { foreignKey: 'district_id', as: 'district' });
   Enquiry.hasMany(models.Document, { foreignKey: 'enquiry_id', as: 'documents' });
+  Enquiry.hasMany(models.CaseEscalation, { foreignKey: 'enquiry_id', as: 'escalations' });
 };
 
 module.exports = Enquiry;
