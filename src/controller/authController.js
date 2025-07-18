@@ -80,7 +80,13 @@ const login = async (req, res) => {
 
   try {
     console.log('Login attempt for username:', username);
-    
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('Database config:', {
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      database: process.env.DB_NAME
+    });
+
     const user = await User.findOne({ where: { username } });
     console.log('User found:', user ? 'Yes' : 'No');
 
@@ -95,7 +101,7 @@ const login = async (req, res) => {
     console.log('Comparing password...');
     const isMatch = await bcrypt.compare(password, user.password_hash);
     console.log('Password match:', isMatch);
-    
+
     if (!isMatch) {
       return res.status(400).json({
         message: "Invalid credentials",
@@ -117,11 +123,16 @@ const login = async (req, res) => {
       full_name: user.full_name
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return res.status(500).json({
       message: "Error logging in",
       success: false,
-      error: error.message
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
