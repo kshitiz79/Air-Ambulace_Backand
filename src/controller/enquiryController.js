@@ -1,5 +1,5 @@
 // controller/enquiryController.js
-const { Enquiry, Document, User, Hospital, District, CaseEscalation } = require('../model');
+const { Enquiry, Document, User, Hospital, District, CaseEscalation, CaseQuery } = require('../model');
 const { ValidationError, ForeignKeyConstraintError } = require('sequelize');
 
 exports.createEnquiry = async (req, res) => {
@@ -240,6 +240,9 @@ exports.deleteEnquiry = async (req, res) => {
     
     // Delete case escalations associated with this enquiry
     await CaseEscalation.destroy({ where: { enquiry_id: id } });
+    
+    // Delete case queries associated with this enquiry
+    await CaseQuery.destroy({ where: { enquiry_id: id } });
     
     // Now delete the enquiry
     const deleted = await Enquiry.destroy({ where: { enquiry_id: id } });
