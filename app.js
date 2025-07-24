@@ -25,6 +25,10 @@ const districtRoutes = require("./src/routes/districtRoutes");
 const caseQueryRoutes = require('./src/routes/caseQueryRoutes');
 const enquiryRoutes = require('./src/routes/enquiryRoute');
 const caseEscalationRoutes = require('./src/routes/caseEscalationRoutes');
+const flightAssignmentRoutes = require('./src/routes/flightAssignmentRoutes');
+const postOperationRoutes = require('./src/routes/postOperationRoutes');
+const invoiceRoutes = require('./src/routes/invoiceRoutes');
+const caseClosureRoutes = require('./src/routes/caseClosureRoutes');
 
 app.use('/api/enquiries', enquiryRoutes);
 app.use('/api/case-escalations', caseEscalationRoutes);
@@ -33,6 +37,10 @@ app.use("/api/districts", districtRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use('/api/case-queries', caseQueryRoutes);
+app.use('/api/flight-assignments', flightAssignmentRoutes);
+app.use('/api/post-operation-reports', postOperationRoutes);
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/case-closures', caseClosureRoutes);
 
 // Root Route
 app.get("/", (req, res) => {

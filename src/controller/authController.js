@@ -76,10 +76,10 @@ const signup = async (req, res) => {
 
 // Login Route
 const login = async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
   try {
-    console.log('Login attempt for username:', username);
+    console.log('Login attempt for email:', email);
     console.log('Environment:', process.env.NODE_ENV);
     console.log('Database config:', {
       host: process.env.DB_HOST,
@@ -87,7 +87,8 @@ const login = async (req, res) => {
       database: process.env.DB_NAME
     });
 
-    const user = await User.findOne({ where: { username } });
+    // Find user by email instead of username
+    const user = await User.findOne({ where: { email } });
     console.log('User found:', user ? 'Yes' : 'No');
 
     if (!user) {
@@ -120,7 +121,9 @@ const login = async (req, res) => {
       role: user.role, // Already normalized in DB
       district_id: user.district_id,
       userId: user.user_id,
-      full_name: user.full_name
+      full_name: user.full_name,
+      username: user.username,
+      email: user.email
     });
   } catch (error) {
     console.error('Login error details:', {
