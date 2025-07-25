@@ -3,6 +3,7 @@ const { Enquiry, Document, User, Hospital, District, CaseEscalation, CaseQuery }
 const { ValidationError, ForeignKeyConstraintError } = require('sequelize');
 const sequelize = require('../config/database');
 const jwt = require('jsonwebtoken');
+const { createNotificationForAllExceptCMO } = require('./notificationController');
 
 // Middleware to extract user from JWT token (optional for backward compatibility)
 const extractUserFromToken = (req, res, next) => {
@@ -111,6 +112,16 @@ exports.createEnquiry = async (req, res) => {
         { model: District, as: 'district', attributes: ['district_id', 'district_name'] }
       ]
     });
+
+    // Create notification for all users except CMO role
+    try {
+      const notificationMessage = `New enquiry created: ${created.enquiry_code} for patient ${patient_name}. Medical condition: ${medical_condition}`;
+      await createNotificationForAllExceptCMO(notificationMessage, enquiry.enquiry_id);
+      console.log('Notification created successfully for new enquiry:', created.enquiry_code);
+    } catch (notificationError) {
+      console.error('Failed to create notification:', notificationError);
+      // Don't fail the enquiry creation if notification fails
+    }
 
     res.status(201).json({ success: true, data: created });
   } catch (err) {

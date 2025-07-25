@@ -8,6 +8,7 @@ const CaseQuery = require('./CaseQuery');
 const CaseEscalation = require('./CaseEscalation');
 const FlightAssignment = require('./FlightAssignment');
 const Ambulance = require('./Ambulance');
+const Notification = require('./Notification');
 
 const models = {
   District,
@@ -19,6 +20,7 @@ const models = {
   CaseEscalation,
   FlightAssignment,
   Ambulance,
+  Notification,
 };
 
 // Define associations

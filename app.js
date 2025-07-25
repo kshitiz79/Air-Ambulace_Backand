@@ -30,6 +30,7 @@ const postOperationRoutes = require('./src/routes/postOperationRoutes');
 const invoiceRoutes = require('./src/routes/invoiceRoutes');
 const caseClosureRoutes = require('./src/routes/caseClosureRoutes');
 const ambulanceRoutes = require('./src/routes/ambulanceRoutes');
+const notificationRoutes = require('./src/routes/notificationRoutes');
 
 app.use('/api/enquiries', enquiryRoutes);
 app.use('/api/case-escalations', caseEscalationRoutes);
@@ -43,6 +44,7 @@ app.use('/api/post-operation-reports', postOperationRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/case-closures', caseClosureRoutes);
 app.use('/api/ambulances', ambulanceRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Root Route
 app.get("/", (req, res) => {
