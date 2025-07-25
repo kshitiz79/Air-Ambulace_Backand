@@ -9,6 +9,10 @@ const {
   getInvoiceStats,
   getInvoicesByStatus
 } = require('../controller/invoiceController');
+const authMiddleware = require('../middleware/authMiddleware');
+
+// Apply auth middleware to all routes
+router.use(authMiddleware);
 
 // Get all invoices
 router.get('/', getAllInvoices);

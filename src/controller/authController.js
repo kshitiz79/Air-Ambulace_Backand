@@ -8,7 +8,7 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 // Allowed roles
-const ALLOWED_ROLES = ["BENEFICIARY", "CMO", "SDM", "DM", "ADMIN", "SERVICE_PROVIDER"];
+const ALLOWED_ROLES = ["BENEFICIARY", "CMO", "SDM", "DM", "ADMIN", "SERVICE_PROVIDER", "HOSPITAL", "SUPPORT"];
 
 // Helper function to generate JWT token
 const generateToken = (user_id, role) => {

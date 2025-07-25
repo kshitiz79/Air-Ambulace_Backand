@@ -10,8 +10,8 @@ async function testDistrictUpdate() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        username: 'testcmo', // Adjust with your CMO username
-        password: 'password123' // Adjust with your CMO password
+        username: 'testcmo', 
+        password: 'password123' 
       })
     });
 

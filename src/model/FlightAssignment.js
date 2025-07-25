@@ -17,7 +17,14 @@ const FlightAssignment = sequelize.define('FlightAssignment', {
   },
   ambulance_id: {
     type: DataTypes.STRING(50),
-    allowNull: true,
+    allowNull: false, // Make it required
+    references: {
+      model: 'ambulances',
+      key: 'ambulance_id'
+    },
+    validate: {
+      notEmpty: true
+    }
   },
   crew_details: {
     type: DataTypes.TEXT,
@@ -48,5 +55,17 @@ const FlightAssignment = sequelize.define('FlightAssignment', {
   timestamps: false,
   comment: 'Stores air ambulance assignments'
 });
+
+// Associations
+FlightAssignment.associate = models => {
+  FlightAssignment.belongsTo(models.Enquiry, {
+    foreignKey: 'enquiry_id',
+    as: 'enquiry'
+  });
+  FlightAssignment.belongsTo(models.Ambulance, {
+    foreignKey: 'ambulance_id',
+    as: 'ambulance'
+  });
+};
 
 module.exports = FlightAssignment;

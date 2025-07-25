@@ -29,6 +29,7 @@ const flightAssignmentRoutes = require('./src/routes/flightAssignmentRoutes');
 const postOperationRoutes = require('./src/routes/postOperationRoutes');
 const invoiceRoutes = require('./src/routes/invoiceRoutes');
 const caseClosureRoutes = require('./src/routes/caseClosureRoutes');
+const ambulanceRoutes = require('./src/routes/ambulanceRoutes');
 
 app.use('/api/enquiries', enquiryRoutes);
 app.use('/api/case-escalations', caseEscalationRoutes);
@@ -41,6 +42,7 @@ app.use('/api/flight-assignments', flightAssignmentRoutes);
 app.use('/api/post-operation-reports', postOperationRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/case-closures', caseClosureRoutes);
+app.use('/api/ambulances', ambulanceRoutes);
 
 // Root Route
 app.get("/", (req, res) => {

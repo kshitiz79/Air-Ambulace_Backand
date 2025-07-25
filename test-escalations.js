@@ -19,7 +19,7 @@ async function testEscalationEndpoints() {
     const enquiriesData = await enquiriesResponse.json();
     console.log('✅ Status:', enquiriesResponse.status);
     console.log('📊 Found', enquiriesData.data?.length || 0, 'enquiries');
-    
+
     if (enquiriesData.data && enquiriesData.data.length > 0) {
       const firstEnquiry = enquiriesData.data[0];
       console.log('📋 First enquiry:', {
@@ -34,7 +34,7 @@ async function testEscalationEndpoints() {
     // Test 3: Create escalation (if we have enquiries)
     if (enquiriesData.data && enquiriesData.data.length > 0) {
       const enquiryToEscalate = enquiriesData.data.find(e => e.status !== 'ESCALATED') || enquiriesData.data[0];
-      
+
       console.log('3. Testing POST /api/enquiries/:id/escalate');
       const escalateResponse = await fetch(`${baseUrl}/api/enquiries/${enquiryToEscalate.enquiry_id}/escalate`, {
         method: 'POST',
@@ -47,7 +47,7 @@ async function testEscalationEndpoints() {
           escalated_by_user_id: 1 // Assuming user ID 1 exists
         })
       });
-      
+
       const escalateData = await escalateResponse.json();
       console.log('✅ Status:', escalateResponse.status);
       console.log('📊 Response:', JSON.stringify(escalateData, null, 2));
