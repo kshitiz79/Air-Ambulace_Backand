@@ -18,7 +18,16 @@ const Enquiry = sequelize.define('Enquiry', {
     // no defaultValue here; we set it in beforeValidate
   },
   patient_name: { type: DataTypes.STRING(100), allowNull: false },
-  ayushman_card_number: { type: DataTypes.STRING(20), allowNull: true },
+  identity_card_type: { 
+    type: DataTypes.ENUM('ABHA', 'PM_JAY'), 
+    allowNull: true,
+    comment: 'Type of identity card: ABHA (14 digits) or PM JAY (9 digits)'
+  },
+  ayushman_card_number: { 
+    type: DataTypes.STRING(20), 
+    allowNull: true,
+    comment: 'Stores ABHA Number (14 digits) or PM JAY ID (9 digits) based on identity_card_type'
+  },
   aadhar_card_number: { type: DataTypes.STRING(12), allowNull: true },
   pan_card_number: { type: DataTypes.STRING(10), allowNull: true },
   medical_condition: { type: DataTypes.TEXT, allowNull: false },
@@ -75,9 +84,40 @@ const Enquiry = sequelize.define('Enquiry', {
   validate: {
     checkIdentityFields() {
       // Skip validation during updates if identity fields are not being changed
-      if (this.isNewRecord || this.changed('ayushman_card_number') || this.changed('aadhar_card_number') || this.changed('pan_card_number')) {
-        if (!this.ayushman_card_number && (!this.aadhar_card_number || !this.pan_card_number)) {
-          throw new Error('Either ayushman_card_number or both aadhar_card_number and pan_card_number must be provided');
+      if (this.isNewRecord || this.changed('identity_card_type') || this.changed('ayushman_card_number') || this.changed('aadhar_card_number') || this.changed('pan_card_number')) {
+        
+        if (this.identity_card_type) {
+          // ABHA or PM JAY selected - validate accordingly
+          if (this.identity_card_type === 'ABHA') {
+            if (!this.ayushman_card_number) {
+              throw new Error('ABHA Number is required when ABHA identity type is selected');
+            }
+            if (!/^\d{14}$/.test(this.ayushman_card_number)) {
+              throw new Error('ABHA Number must be exactly 14 digits');
+            }
+          } else if (this.identity_card_type === 'PM_JAY') {
+            if (!this.ayushman_card_number) {
+              throw new Error('PM JAY ID is required when PM JAY identity type is selected');
+            }
+            if (!/^\d{9}$/.test(this.ayushman_card_number)) {
+              throw new Error('PM JAY ID must be exactly 9 digits');
+            }
+          }
+        } else {
+          // No identity card type selected - must have both Aadhar and PAN
+          if (!this.aadhar_card_number || !this.pan_card_number) {
+            throw new Error('Either select ABHA/PM JAY identity type or provide both Aadhar and PAN card numbers');
+          }
+          
+          // Validate Aadhar format (12 digits)
+          if (this.aadhar_card_number && !/^\d{12}$/.test(this.aadhar_card_number)) {
+            throw new Error('Aadhar card number must be exactly 12 digits');
+          }
+          
+          // Validate PAN format (ABCDE1234F)
+          if (this.pan_card_number && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(this.pan_card_number)) {
+            throw new Error('PAN card number must follow format ABCDE1234F');
+          }
         }
       }
     }

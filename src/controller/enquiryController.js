@@ -31,7 +31,7 @@ const extractUserFromToken = (req, res, next) => {
 exports.createEnquiry = async (req, res) => {
   try {
     const {
-      patient_name, ayushman_card_number, aadhar_card_number, pan_card_number,
+      patient_name, identity_card_type, ayushman_card_number, aadhar_card_number, pan_card_number,
       medical_condition, hospital_id, source_hospital_id, district_id,
       contact_name, contact_phone, contact_email, submitted_by_user_id,
       father_spouse_name, age, gender, address, chief_complaint,
@@ -50,6 +50,7 @@ exports.createEnquiry = async (req, res) => {
 
     const enquiry = await Enquiry.create({
       patient_name,
+      identity_card_type,
       ayushman_card_number,
       aadhar_card_number,
       pan_card_number,
@@ -162,7 +163,8 @@ exports.getAllEnquiries = async (req, res) => {
       where: whereClause,
       attributes: [
         'enquiry_id', 'enquiry_code', 'patient_name', 'status', 'hospital_id', 'source_hospital_id', 'district_id',
-        'medical_condition', 'ayushman_card_number', 'contact_name', 'contact_phone', 'contact_email'
+        'medical_condition', 'identity_card_type', 'ayushman_card_number', 'aadhar_card_number', 'pan_card_number',
+        'contact_name', 'contact_phone', 'contact_email'
       ],
       include: [
         { model: Document, as: 'documents', attributes: ['document_id', 'document_type', 'file_path'] },
@@ -202,10 +204,10 @@ exports.getEnquiryById = async (req, res) => {
       where: whereClause,
       attributes: [
         'enquiry_id', 'enquiry_code', 'patient_name', 'status', 'hospital_id', 'source_hospital_id', 'district_id',
-        'medical_condition', 'ayushman_card_number', 'contact_name', 'contact_phone', 'contact_email',
-        'father_spouse_name', 'age', 'gender', 'address', 'chief_complaint', 'general_condition',
-        'vitals', 'referring_physician_name', 'referring_physician_designation', 'referral_note',
-        'transportation_category', 'air_transport_type', 'recommending_authority_name',
+        'medical_condition', 'identity_card_type', 'ayushman_card_number', 'aadhar_card_number', 'pan_card_number',
+        'contact_name', 'contact_phone', 'contact_email', 'father_spouse_name', 'age', 'gender', 'address', 
+        'chief_complaint', 'general_condition', 'vitals', 'referring_physician_name', 'referring_physician_designation', 
+        'referral_note', 'transportation_category', 'air_transport_type', 'recommending_authority_name',
         'recommending_authority_designation', 'approval_authority_name', 'approval_authority_designation',
         'bed_availability_confirmed', 'als_ambulance_arranged', 'ambulance_registration_number',
         'ambulance_contact', 'medical_team_note', 'remarks'
