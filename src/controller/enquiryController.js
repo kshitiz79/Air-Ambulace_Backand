@@ -3,7 +3,8 @@ const { Enquiry, Document, User, Hospital, District, CaseEscalation, CaseQuery }
 const { ValidationError, ForeignKeyConstraintError } = require('sequelize');
 const sequelize = require('../config/database');
 const jwt = require('jsonwebtoken');
-const { createNotificationForAllExceptCMO } = require('./notificationController');
+const { createNotificationForAllExceptCMHO } = require('./notificationController');
+const { translateFields } = require('../services/translateService');
 
 // Middleware to extract user from JWT token (optional for backward compatibility)
 const extractUserFromToken = (req, res, next) => {
@@ -41,56 +42,109 @@ exports.createEnquiry = async (req, res) => {
       recommending_authority_designation, approval_authority_name,
       approval_authority_designation, bed_availability_confirmed,
       als_ambulance_arranged, ambulance_registration_number,
-      ambulance_contact, medical_team_note, remarks
+      ambulance_contact, medical_team_note, remarks,
+      escalate_case, escalation_reason, escalated_to
     } = req.body;
 
-    // Creating enquiry with provided data
+    // Detect source language from request header (set by frontend)
+    const sourceLang = req.headers['x-language'] || 'en';
 
-    // identity-field check is now in model validation
-
-    const enquiry = await Enquiry.create({
+    // Translate all free-text fields to both EN and HI
+    const textFields = {
       patient_name,
-      identity_card_type,
-      ayushman_card_number,
-      aadhar_card_number,
-      pan_card_number,
-      medical_condition,
-      hospital_id,
-      source_hospital_id,
-      district_id,
-      contact_name,
-      contact_phone,
-      contact_email,
-      submitted_by_user_id,
       father_spouse_name,
-      age,
-      gender,
       address,
+      medical_condition,
       chief_complaint,
       general_condition,
-      vitals,
-      referring_physician_name,
-      referring_physician_designation,
       referral_note,
-      transportation_category,
-      air_transport_type,
       recommending_authority_name,
       recommending_authority_designation,
       approval_authority_name,
       approval_authority_designation,
+      referring_physician_name,
+      referring_physician_designation,
+      medical_team_note,
+      remarks,
+      contact_name,
+    };
+
+    const { en: enFields, hi: hiFields } = await translateFields(textFields, sourceLang);
+
+    const enquiry = await Enquiry.create({
+      // Use English as the canonical stored value
+      patient_name: enFields.patient_name,
+      identity_card_type,
+      ayushman_card_number,
+      aadhar_card_number,
+      pan_card_number,
+      medical_condition: enFields.medical_condition,
+      hospital_id,
+      source_hospital_id,
+      district_id,
+      contact_name: enFields.contact_name,
+      contact_phone,
+      contact_email,
+      submitted_by_user_id,
+      father_spouse_name: enFields.father_spouse_name,
+      age,
+      gender,
+      address: enFields.address,
+      chief_complaint: enFields.chief_complaint,
+      general_condition: enFields.general_condition,
+      vitals,
+      referring_physician_name: enFields.referring_physician_name,
+      referring_physician_designation: enFields.referring_physician_designation,
+      referral_note: enFields.referral_note,
+      transportation_category,
+      air_transport_type,
+      recommending_authority_name: enFields.recommending_authority_name,
+      recommending_authority_designation: enFields.recommending_authority_designation,
+      approval_authority_name: enFields.approval_authority_name,
+      approval_authority_designation: enFields.approval_authority_designation,
       bed_availability_confirmed: bed_availability_confirmed === '1' || bed_availability_confirmed === true,
       als_ambulance_arranged: als_ambulance_arranged === '1' || als_ambulance_arranged === true,
       ambulance_registration_number,
       ambulance_contact,
-      medical_team_note,
-      remarks
+      medical_team_note: enFields.medical_team_note,
+      remarks: enFields.remarks,
+      status: (escalate_case === 'true' || escalate_case === true) ? 'ESCALATED' : 'PENDING',
+
+      // Hindi translations
+      patient_name_hi: hiFields.patient_name,
+      father_spouse_name_hi: hiFields.father_spouse_name,
+      address_hi: hiFields.address,
+      medical_condition_hi: hiFields.medical_condition,
+      chief_complaint_hi: hiFields.chief_complaint,
+      general_condition_hi: hiFields.general_condition,
+      referral_note_hi: hiFields.referral_note,
+      recommending_authority_name_hi: hiFields.recommending_authority_name,
+      recommending_authority_designation_hi: hiFields.recommending_authority_designation,
+      approval_authority_name_hi: hiFields.approval_authority_name,
+      approval_authority_designation_hi: hiFields.approval_authority_designation,
+      referring_physician_name_hi: hiFields.referring_physician_name,
+      referring_physician_designation_hi: hiFields.referring_physician_designation,
+      medical_team_note_hi: hiFields.medical_team_note,
+      remarks_hi: hiFields.remarks,
+      contact_name_hi: hiFields.contact_name,
     });
+
+    // Handle escalation record if needed
+    if (escalate_case === 'true' || escalate_case === true) {
+      await CaseEscalation.create({
+        enquiry_id: enquiry.enquiry_id,
+        escalated_by_user_id: submitted_by_user_id,
+        escalation_reason: escalation_reason || 'No reason provided',
+        escalated_to: escalated_to || 'Senior Authority',
+        status: 'PENDING'
+      });
+    }
 
     // handle file uploads
     if (req.files) {
       const docs = [];
       for (const [type, files] of Object.entries(req.files)) {
-        if (!['AYUSHMAN_CARD', 'ID_PROOF', 'MEDICAL_REPORT', 'OTHER'].includes(type)) {
+        if (!['AYUSHMAN_CARD', 'ID_PROOF', 'MEDICAL_REPORT', 'EMERGENCY_PROOF', 'OTHER'].includes(type)) {
           return res.status(400).json({ success: false, message: `Invalid document_type: ${type}` });
         }
         files.forEach(file => {
@@ -114,10 +168,10 @@ exports.createEnquiry = async (req, res) => {
       ]
     });
 
-    // Create notification for all users except CMO role
+    // Create notification for all users except CMHO role
     try {
       const notificationMessage = `New enquiry created: ${created.enquiry_code} for patient ${patient_name}. Medical condition: ${medical_condition}`;
-      await createNotificationForAllExceptCMO(notificationMessage, enquiry.enquiry_id);
+      await createNotificationForAllExceptCMHO(notificationMessage, enquiry.enquiry_id);
       console.log('Notification created successfully for new enquiry:', created.enquiry_code);
     } catch (notificationError) {
       console.error('Failed to create notification:', notificationError);
@@ -150,12 +204,12 @@ exports.createEnquiry = async (req, res) => {
 
 exports.getAllEnquiries = async (req, res) => {
   try {
-    // Check if user is CMO and filter accordingly
+    // Check if user is CMHO and filter accordingly
     const { user } = req;
     let whereClause = {};
-    
-    // If user is CMO, only show their own enquiries
-    if (user && user.role === 'CMO') {
+
+    // If user is CMHO, only show their own enquiries
+    if (user && user.role === 'CMHO') {
       whereClause.submitted_by_user_id = user.user_id; // Use user_id from JWT token
     }
 
@@ -164,7 +218,8 @@ exports.getAllEnquiries = async (req, res) => {
       attributes: [
         'enquiry_id', 'enquiry_code', 'patient_name', 'status', 'hospital_id', 'source_hospital_id', 'district_id',
         'medical_condition', 'identity_card_type', 'ayushman_card_number', 'aadhar_card_number', 'pan_card_number',
-        'contact_name', 'contact_phone', 'contact_email'
+        'contact_name', 'contact_phone', 'contact_email', 'air_transport_type', 'created_at',
+        'patient_name_hi', 'medical_condition_hi', 'contact_name_hi'
       ],
       include: [
         { model: Document, as: 'documents', attributes: ['document_id', 'document_type', 'file_path'] },
@@ -175,10 +230,10 @@ exports.getAllEnquiries = async (req, res) => {
       ],
       order: [['created_at', 'DESC']],
     });
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: enquiries,
-      filtered: user && user.role === 'CMO',
+      filtered: user && user.role === 'CMHO',
       user_id: user ? user.user_id : null
     });
   } catch (err) {
@@ -191,12 +246,12 @@ exports.getEnquiryById = async (req, res) => {
   try {
     const { id } = req.params;
     const { user } = req;
-    
+
     // Build where clause
     let whereClause = { enquiry_id: id };
-    
-    // If user is CMO, only allow access to their own enquiries
-    if (user && user.role === 'CMO') {
+
+    // If user is CMHO, only allow access to their own enquiries
+    if (user && user.role === 'CMHO') {
       whereClause.submitted_by_user_id = user.user_id; // Use user_id from JWT token
     }
 
@@ -205,12 +260,19 @@ exports.getEnquiryById = async (req, res) => {
       attributes: [
         'enquiry_id', 'enquiry_code', 'patient_name', 'status', 'hospital_id', 'source_hospital_id', 'district_id',
         'medical_condition', 'identity_card_type', 'ayushman_card_number', 'aadhar_card_number', 'pan_card_number',
-        'contact_name', 'contact_phone', 'contact_email', 'father_spouse_name', 'age', 'gender', 'address', 
-        'chief_complaint', 'general_condition', 'vitals', 'referring_physician_name', 'referring_physician_designation', 
+        'contact_name', 'contact_phone', 'contact_email', 'father_spouse_name', 'age', 'gender', 'address',
+        'chief_complaint', 'general_condition', 'vitals', 'referring_physician_name', 'referring_physician_designation',
         'referral_note', 'transportation_category', 'air_transport_type', 'recommending_authority_name',
         'recommending_authority_designation', 'approval_authority_name', 'approval_authority_designation',
         'bed_availability_confirmed', 'als_ambulance_arranged', 'ambulance_registration_number',
-        'ambulance_contact', 'medical_team_note', 'remarks'
+        'ambulance_contact', 'medical_team_note', 'remarks',
+        // Hindi translations
+        'patient_name_hi', 'father_spouse_name_hi', 'address_hi', 'medical_condition_hi',
+        'chief_complaint_hi', 'general_condition_hi', 'referral_note_hi',
+        'recommending_authority_name_hi', 'recommending_authority_designation_hi',
+        'approval_authority_name_hi', 'approval_authority_designation_hi',
+        'referring_physician_name_hi', 'referring_physician_designation_hi',
+        'medical_team_note_hi', 'remarks_hi', 'contact_name_hi'
       ],
       include: [
         { model: Document, as: 'documents', attributes: ['document_id', 'document_type', 'file_path'] },
@@ -220,14 +282,14 @@ exports.getEnquiryById = async (req, res) => {
         { model: District, as: 'district', attributes: ['district_id', 'district_name'] },
       ],
     });
-    
+
     if (!enquiry) {
-      const message = user && user.role === 'CMO' 
-        ? 'Enquiry not found or you do not have access to it' 
+      const message = user && user.role === 'CMHO'
+        ? 'Enquiry not found or you do not have access to it'
         : 'Enquiry not found';
       return res.status(404).json({ success: false, message });
     }
-    
+
     res.json({ success: true, data: enquiry });
   } catch (err) {
     console.error('Error fetching enquiry:', err);
@@ -239,19 +301,19 @@ exports.updateEnquiry = async (req, res) => {
   try {
     const { id } = req.params;
     const { user } = req;
-    
-    // Build where clause for CMO access control
+
+    // Build where clause for CMHO access control
     let whereClause = { enquiry_id: id };
-    
-    // If user is CMO, only allow access to their own enquiries
-    if (user && user.role === 'CMO') {
+
+    // If user is CMHO, only allow access to their own enquiries
+    if (user && user.role === 'CMHO') {
       whereClause.submitted_by_user_id = user.user_id;
     }
-    
+
     const enquiry = await Enquiry.findOne({ where: whereClause });
     if (!enquiry) {
-      const message = user && user.role === 'CMO' 
-        ? 'Enquiry not found or you do not have access to it' 
+      const message = user && user.role === 'CMHO'
+        ? 'Enquiry not found or you do not have access to it'
         : 'Enquiry not found';
       return res.status(404).json({ success: false, message });
     }
@@ -259,32 +321,32 @@ exports.updateEnquiry = async (req, res) => {
     // Only validate identity cards if they are being updated
     const { ayushman_card_number, aadhar_card_number, pan_card_number } = req.body;
     const isUpdatingIdentity = ayushman_card_number !== undefined || aadhar_card_number !== undefined || pan_card_number !== undefined;
-    
+
     if (isUpdatingIdentity) {
       const finalAyushman = ayushman_card_number !== undefined ? ayushman_card_number : enquiry.ayushman_card_number;
       const finalAadhar = aadhar_card_number !== undefined ? aadhar_card_number : enquiry.aadhar_card_number;
       const finalPan = pan_card_number !== undefined ? pan_card_number : enquiry.pan_card_number;
-      
+
       if (!finalAyushman && (!finalAadhar || !finalPan)) {
         return res.status(400).json({ success: false, message: 'Either ayushman_card_number or both aadhar_card_number and pan_card_number must be provided' });
       }
     }
 
     const updateData = { ...req.body };
-    
+
     // Debug logging for district updates
     if (updateData.district_id) {
       console.log('Updating district_id from', enquiry.district_id, 'to', updateData.district_id);
       console.log('User role:', user?.role, 'User ID:', user?.user_id);
     }
-    
+
     await enquiry.update(updateData);
 
     if (req.files) {
       await Document.destroy({ where: { enquiry_id: id } });
       const docsToCreate = [];
       for (const [document_type, files] of Object.entries(req.files)) {
-        if (!['AYUSHMAN_CARD', 'ID_PROOF', 'MEDICAL_REPORT', 'OTHER'].includes(document_type)) {
+        if (!['AYUSHMAN_CARD', 'ID_PROOF', 'MEDICAL_REPORT', 'EMERGENCY_PROOF', 'OTHER'].includes(document_type)) {
           return res.status(400).json({ success: false, message: `Invalid document_type: ${document_type}` });
         }
         files.forEach(file => {
@@ -325,7 +387,7 @@ exports.updateEnquiry = async (req, res) => {
 exports.deleteEnquiry = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Check if enquiry exists
     const enquiry = await Enquiry.findByPk(id);
     if (!enquiry) {
@@ -335,16 +397,16 @@ exports.deleteEnquiry = async (req, res) => {
     // Delete related records first to avoid foreign key constraint errors
     // Delete documents associated with this enquiry
     await Document.destroy({ where: { enquiry_id: id } });
-    
+
     // Delete case escalations associated with this enquiry
     await CaseEscalation.destroy({ where: { enquiry_id: id } });
-    
+
     // Delete case queries associated with this enquiry
     await CaseQuery.destroy({ where: { enquiry_id: id } });
-    
+
     // Now delete the enquiry
     const deleted = await Enquiry.destroy({ where: { enquiry_id: id } });
-    
+
     res.json({ success: true, message: 'Enquiry and all related records deleted successfully' });
   } catch (err) {
     console.error('Delete enquiry error:', err);
@@ -394,7 +456,7 @@ exports.approveOrRejectEnquiry = async (req, res) => {
   }
 };
 
-exports.forwardEnquiryToDM = async (req, res) => {
+exports.forwardEnquiryToCollector = async (req, res) => {
   try {
     const { id } = req.params;
     const enquiry = await Enquiry.findByPk(id);
@@ -402,11 +464,11 @@ exports.forwardEnquiryToDM = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Enquiry not found' });
     }
     if (enquiry.status === 'FORWARDED') {
-      return res.status(400).json({ success: false, message: 'Enquiry already forwarded to DM' });
+      return res.status(400).json({ success: false, message: 'Enquiry already forwarded to Collector' });
     }
     enquiry.status = 'FORWARDED';
     await enquiry.save();
-    res.json({ success: true, message: 'Enquiry forwarded to DM', data: enquiry });
+    res.json({ success: true, message: 'Enquiry forwarded to Collector', data: enquiry });
   } catch (err) {
     console.error('Forward enquiry error:', err);
     res.status(500).json({ success: false, message: 'Failed to forward enquiry', error: err.message });
@@ -492,16 +554,16 @@ exports.escalateEnquiry = async (req, res) => {
 
 exports.searchEnquiries = async (req, res) => {
   try {
-    const { 
-      patient_name, 
-      father_spouse_name, 
-      ayushman_card_number, 
-      aadhar_card_number, 
-      pan_card_number, 
+    const {
+      patient_name,
+      father_spouse_name,
+      ayushman_card_number,
+      aadhar_card_number,
+      pan_card_number,
       contact_email,
       contact_phone,
       enquiry_code,
-      status 
+      status
     } = req.query;
 
     const { user } = req;
@@ -510,8 +572,8 @@ exports.searchEnquiries = async (req, res) => {
     const { Op } = require('sequelize');
     const whereConditions = {};
 
-    // If user is CMO, only search their own enquiries
-    if (user && user.role === 'CMO') {
+    // If user is CMHO, only search their own enquiries
+    if (user && user.role === 'CMHO') {
       whereConditions.submitted_by_user_id = user.user_id; // Use user_id from JWT token
     }
 
@@ -549,7 +611,8 @@ exports.searchEnquiries = async (req, res) => {
         'enquiry_id', 'enquiry_code', 'patient_name', 'status', 'hospital_id', 'source_hospital_id', 'district_id',
         'medical_condition', 'ayushman_card_number', 'aadhar_card_number', 'pan_card_number',
         'contact_name', 'contact_phone', 'contact_email', 'father_spouse_name', 'age', 'gender',
-        'created_at', 'updated_at'
+        'air_transport_type', 'created_at', 'updated_at',
+        'patient_name_hi', 'medical_condition_hi', 'contact_name_hi', 'father_spouse_name_hi', 'address_hi'
       ],
       include: [
         { model: Document, as: 'documents', attributes: ['document_id', 'document_type', 'file_path'] },
@@ -562,11 +625,11 @@ exports.searchEnquiries = async (req, res) => {
       limit: 50 // Limit results for performance
     });
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: enquiries,
       count: enquiries.length,
-      filtered: user && user.role === 'CMO',
+      filtered: user && user.role === 'CMHO',
       user_id: user ? user.user_id : null,
       message: `Found ${enquiries.length} enquiries matching your search criteria`
     });
@@ -576,16 +639,16 @@ exports.searchEnquiries = async (req, res) => {
   }
 };
 
-// Get dashboard statistics for CMO (only their own enquiries)
-exports.getCMODashboardStats = async (req, res) => {
+// Get dashboard statistics for CMHO (only their own enquiries)
+exports.getCMHODashboardStats = async (req, res) => {
   try {
     const { user } = req;
 
-    if (!user || user.role !== 'CMO') {
-      return res.status(403).json({ success: false, message: 'Access denied. CMO role required.' });
+    if (!user || user.role !== 'CMHO') {
+      return res.status(403).json({ success: false, message: 'Access denied. CMHO role required.' });
     }
 
-    // Get counts for different statuses (only for current CMO)
+    // Get counts for different statuses (only for current CMHO)
     const stats = await Enquiry.findAll({
       where: { submitted_by_user_id: user.user_id }, // Use user_id from JWT token
       attributes: [
@@ -611,7 +674,7 @@ exports.getCMODashboardStats = async (req, res) => {
     stats.forEach(stat => {
       const count = parseInt(stat.count);
       formattedStats.totalEnquiries += count;
-      
+
       switch (stat.status) {
         case 'PENDING':
           formattedStats.pendingEnquiries = count;
@@ -645,7 +708,7 @@ exports.getCMODashboardStats = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching CMO dashboard stats:', error);
+    console.error('Error fetching CMHO dashboard stats:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

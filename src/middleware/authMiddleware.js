@@ -1,9 +1,10 @@
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
+const User = require('../model/User');
 
 dotenv.config();
 
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   console.log('verifyToken - Authorization header:', authHeader);
 
@@ -23,6 +24,16 @@ const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('verifyToken - Decoded token:', decoded);
+
+    // Additional proactive verification: Block if User is disabled
+    if (decoded.user_id) {
+      const currentUser = await User.findByPk(decoded.user_id);
+      if (!currentUser || currentUser.status !== 'active') {
+        console.log('verifyToken - Blocked Access: User Account Disabled or Missing');
+        return res.status(403).json({ success: false, message: 'Your account has been disabled. Please contact the administrator.' });
+      }
+    }
+
     req.user = decoded; // Should include user_id, role, etc.
     next();
   } catch (err) {

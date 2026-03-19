@@ -12,7 +12,7 @@ const Document = sequelize.define('Document', {
     allowNull: false,
   },
   document_type: {
-    type: DataTypes.ENUM('AYUSHMAN_CARD', 'ID_PROOF', 'MEDICAL_REPORT', 'OTHER'),
+    type: DataTypes.STRING(50),
     allowNull: false,
   },
   file_path: {

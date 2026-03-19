@@ -144,14 +144,14 @@ const markAllAsRead = async (req, res) => {
   }
 };
 
-// Create notification for all users except CMO role
-const createNotificationForAllExceptCMO = async (message, enquiryId = null, type = 'IN_APP') => {
+// Create notification for all users except CMHO role
+const createNotificationForAllExceptCMHO = async (message, enquiryId = null, type = 'IN_APP') => {
   try {
-    // Get all users except CMO role
+    // Get all users except CMHO role
     const users = await User.findAll({
       where: {
         role: {
-          [Op.ne]: 'CMO'
+          [Op.ne]: 'CMHO'
         }
       },
       attributes: ['user_id']
@@ -236,7 +236,7 @@ module.exports = {
   getUnreadCount,
   markAsRead,
   markAllAsRead,
-  createNotificationForAllExceptCMO,
+  createNotificationForAllExceptCMHO,
   createNotificationForUsers,
   deleteNotification
 };

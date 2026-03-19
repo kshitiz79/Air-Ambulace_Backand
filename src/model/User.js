@@ -18,7 +18,7 @@ const User = sequelize.define("User", {
   },
   role: {
     type: DataTypes.ENUM,
-    values: ['BENEFICIARY', 'CMO', 'SDM', 'DM', 'SERVICE_PROVIDER', 'ADMIN', 'HOSPITAL', 'SUPPORT'],
+    values: ['BENEFICIARY', 'CMHO', 'SDM', 'COLLECTOR', 'SERVICE_PROVIDER', 'ADMIN', 'HOSPITAL', 'SUPPORT', 'DME'],
     allowNull: false
   },
   full_name: {

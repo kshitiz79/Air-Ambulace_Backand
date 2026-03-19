@@ -6,8 +6,8 @@ const sequelize = require("./src/config/database");
 dotenv.config();
 const app = express();
 
-app.use(express.json()); 
-app.use(express.urlencoded({ extended: true })); 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors({
   origin: [
     'https://airambulance.jetserveaviation.com',
@@ -49,6 +49,27 @@ app.use('/api/notifications', notificationRoutes);
 // Root Route
 app.get("/", (req, res) => {
   res.send("Welcome to the Air Ambulance Backend API!");
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error('Global Error Handler:', err);
+
+  if (err instanceof require('multer').MulterError) {
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Unexpected file field or too many files.',
+        error: err.field || err.message
+      });
+    }
+  }
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
 });
 
 // Start server

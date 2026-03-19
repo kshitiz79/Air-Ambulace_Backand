@@ -100,10 +100,10 @@ exports.getAllCaseQueries = async (req, res) => {
       },
     ];
 
-    // If user is CMO, filter to show only queries related to their enquiries
-    if (user && user.role === 'CMO') {
+    // If user is CMHO, filter to show only queries related to their enquiries
+    if (user && user.role === 'CMHO') {
       includeOptions[0].where = { submitted_by_user_id: user.user_id };
-      console.log('CMO filtering applied - showing only queries for enquiries created by user_id:', user.user_id);
+      console.log('CMHO filtering applied - showing only queries for enquiries created by user_id:', user.user_id);
     }
 
     const caseQueries = await CaseQuery.findAll({
@@ -121,7 +121,7 @@ exports.getAllCaseQueries = async (req, res) => {
     res.json({ 
       success: true, 
       data: caseQueries,
-      filtered: user && user.role === 'CMO',
+      filtered: user && user.role === 'CMHO',
       user_id: user ? user.user_id : null
     });
   } catch (err) {
@@ -153,8 +153,8 @@ exports.getCaseQueryById = async (req, res) => {
       },
     ];
 
-    // If user is CMO, filter to show only queries related to their enquiries
-    if (user && user.role === 'CMO') {
+    // If user is CMHO, filter to show only queries related to their enquiries
+    if (user && user.role === 'CMHO') {
       includeOptions[0].where = { submitted_by_user_id: user.user_id };
     }
 
@@ -167,7 +167,7 @@ exports.getCaseQueryById = async (req, res) => {
     });
 
     if (!caseQuery) {
-      const message = user && user.role === 'CMO' 
+      const message = user && user.role === 'CMHO' 
         ? 'Case query not found or you do not have access to it' 
         : 'Case query not found';
       return res.status(404).json({ success: false, message });

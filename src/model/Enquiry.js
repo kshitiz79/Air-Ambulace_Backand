@@ -73,7 +73,25 @@ const Enquiry = sequelize.define('Enquiry', {
   ambulance_registration_number: { type: DataTypes.STRING(50), allowNull: true },
   ambulance_contact: { type: DataTypes.STRING(15), allowNull: true },
   medical_team_note: { type: DataTypes.TEXT, allowNull: true },
-  remarks: { type: DataTypes.TEXT, allowNull: true }
+  remarks: { type: DataTypes.TEXT, allowNull: true },
+
+  // Hindi translations of free-text fields (auto-populated via Google Translate)
+  patient_name_hi: { type: DataTypes.STRING(200), allowNull: true },
+  father_spouse_name_hi: { type: DataTypes.STRING(200), allowNull: true },
+  address_hi: { type: DataTypes.TEXT, allowNull: true },
+  medical_condition_hi: { type: DataTypes.TEXT, allowNull: true },
+  chief_complaint_hi: { type: DataTypes.TEXT, allowNull: true },
+  general_condition_hi: { type: DataTypes.STRING(100), allowNull: true },
+  referral_note_hi: { type: DataTypes.TEXT, allowNull: true },
+  recommending_authority_name_hi: { type: DataTypes.STRING(200), allowNull: true },
+  recommending_authority_designation_hi: { type: DataTypes.STRING(200), allowNull: true },
+  approval_authority_name_hi: { type: DataTypes.STRING(200), allowNull: true },
+  approval_authority_designation_hi: { type: DataTypes.STRING(200), allowNull: true },
+  referring_physician_name_hi: { type: DataTypes.STRING(200), allowNull: true },
+  referring_physician_designation_hi: { type: DataTypes.STRING(200), allowNull: true },
+  medical_team_note_hi: { type: DataTypes.TEXT, allowNull: true },
+  remarks_hi: { type: DataTypes.TEXT, allowNull: true },
+  contact_name_hi: { type: DataTypes.STRING(200), allowNull: true }
 }, {
   tableName: 'enquiries',
   timestamps: true,
