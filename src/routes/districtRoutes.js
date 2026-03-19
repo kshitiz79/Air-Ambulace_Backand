@@ -4,6 +4,7 @@ const districtController = require("./../controller/districtController");
 
 router.get("/", districtController.getAllDistricts);
 router.post("/", districtController.createDistrict);
+router.post("/bulk", districtController.bulkCreateDistricts);
 router.get("/:id", districtController.getDistrictById);
 router.delete("/:id", districtController.deleteDistrict);
 

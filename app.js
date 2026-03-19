@@ -31,6 +31,7 @@ const invoiceRoutes = require('./src/routes/invoiceRoutes');
 const caseClosureRoutes = require('./src/routes/caseClosureRoutes');
 const ambulanceRoutes = require('./src/routes/ambulanceRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
+const referralAuthorityRoutes = require('./src/routes/referralAuthorityRoutes');
 
 app.use('/api/enquiries', enquiryRoutes);
 app.use('/api/case-escalations', caseEscalationRoutes);
@@ -45,6 +46,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/case-closures', caseClosureRoutes);
 app.use('/api/ambulances', ambulanceRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/referral-authorities', referralAuthorityRoutes);
 
 // Root Route
 app.get("/", (req, res) => {

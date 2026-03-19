@@ -62,3 +62,17 @@ exports.deleteDistrict = async (req, res) => {
     res.status(500).json({ error: "Failed to delete district" });
   }
 };
+
+exports.bulkCreateDistricts = async (req, res) => {
+  try {
+    const districts = req.body;
+    if (!Array.isArray(districts)) {
+      return res.status(400).json({ error: "Invalid data format, expected an array" });
+    }
+    const created = await District.bulkCreate(districts, { ignoreDuplicates: true });
+    res.status(201).json({ message: `${created.length} districts processed`, data: created });
+  } catch (error) {
+    console.error("Bulk create districts error:", error);
+    res.status(500).json({ error: "Failed to bulk create districts" });
+  }
+};

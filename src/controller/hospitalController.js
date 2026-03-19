@@ -103,6 +103,42 @@ const hospitalController = {
       res.status(500).json({ success: false, message: 'Failed to create hospital', error: error.message });
     }
   },
+
+  async bulkCreateHospitals(req, res) {
+    try {
+      const hospitals = req.body;
+      if (!Array.isArray(hospitals)) {
+        return res.status(400).json({ success: false, message: 'Invalid data format, expected an array' });
+      }
+      
+      // Basic validation for each hospital - check for hospital_name and district_id
+      const validHospitals = hospitals.filter(h => (h.hospital_name || h.name) && h.district_id);
+      
+      if (validHospitals.length === 0) {
+        return res.status(400).json({ success: false, message: 'No valid hospital records found' });
+      }
+
+      // Map 'name' to 'hospital_name' for bulk creation
+      const hospitalData = validHospitals.map(h => ({
+        hospital_name: h.hospital_name || h.name,
+        district_id: h.district_id,
+        address: h.address || '',
+        contact_phone: h.contact_phone || '',
+        contact_email: h.contact_email || '',
+        hospital_type: (h.hospital_type && ['GOVERNMENT', 'PRIVATE'].includes(h.hospital_type.toUpperCase())) ? h.hospital_type.toUpperCase() : 'PRIVATE',
+        contact_person_name: h.contact_person_name || '',
+        contact_person_phone: h.contact_person_phone || '',
+        contact_person_email: h.contact_person_email || '',
+        registration_number: h.registration_number || '',
+      }));
+
+      const created = await Hospital.bulkCreate(hospitalData, { ignoreDuplicates: true });
+      res.status(201).json({ success: true, message: `${created.length} hospitals processed`, data: created });
+    } catch (error) {
+      console.error('Error bulk creating hospitals:', error);
+      res.status(500).json({ success: false, message: 'Failed to bulk create hospitals', error: error.message });
+    }
+  },
 };
 
 module.exports = hospitalController;
