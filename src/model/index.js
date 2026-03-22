@@ -10,6 +10,7 @@ const FlightAssignment = require('./FlightAssignment');
 const Ambulance = require('./Ambulance');
 const Notification = require('./Notification');
 const ReferralAuthority = require('./ReferralAuthority');
+const WhatsAppConfig = require('./WhatsAppConfig');
 
 const models = {
   District,
@@ -23,6 +24,7 @@ const models = {
   Ambulance,
   Notification,
   ReferralAuthority,
+  WhatsAppConfig,
 };
 
 // Define associations

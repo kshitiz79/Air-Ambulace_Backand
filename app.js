@@ -32,6 +32,13 @@ const caseClosureRoutes = require('./src/routes/caseClosureRoutes');
 const ambulanceRoutes = require('./src/routes/ambulanceRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
 const referralAuthorityRoutes = require('./src/routes/referralAuthorityRoutes');
+const activityLogRoutes = require('./src/routes/activityLogRoutes');
+const medicalConditionRoutes = require('./src/routes/medicalConditionRoutes');
+const whatsappConfigRoutes = require('./src/routes/whatsappConfigRoutes');
+const { activityLoggerMiddleware } = require('./src/middleware/activityLogger');
+
+// Global activity logger — logs all mutating requests automatically
+app.use(activityLoggerMiddleware);
 
 app.use('/api/enquiries', enquiryRoutes);
 app.use('/api/case-escalations', caseEscalationRoutes);
@@ -47,6 +54,9 @@ app.use('/api/case-closures', caseClosureRoutes);
 app.use('/api/ambulances', ambulanceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/referral-authorities', referralAuthorityRoutes);
+app.use('/api/activity-logs', activityLogRoutes);
+app.use('/api/medical-conditions', medicalConditionRoutes);
+app.use('/api/whatsapp-config', whatsappConfigRoutes);
 
 // Root Route
 app.get("/", (req, res) => {

@@ -23,6 +23,10 @@ const District = sequelize.define("District", {
   state: {
     type: DataTypes.STRING(50),
     defaultValue: "Madhya Pradesh"
+  },
+  division: {
+    type: DataTypes.STRING(100),
+    allowNull: true
   }
 }, {
   tableName: "districts",

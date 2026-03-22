@@ -1,5 +1,5 @@
 const express = require("express");
-const { signup, login, createUser, forgotPassword, verifyOtp, resetPassword } = require("./../controller/authController");
+const { signup, login, createUser, forgotPassword, verifyOtp, resetPassword, changePassword } = require("./../controller/authController");
 const verifyToken = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -15,5 +15,8 @@ router.post("/create-user", verifyToken, createUser);
 router.post("/forgot-password", forgotPassword);
 router.post("/verify-otp", verifyOtp);
 router.post("/reset-password", resetPassword);
+
+// Authenticated password change (first-login forced change)
+router.post("/change-password", verifyToken, changePassword);
 
 module.exports = router;

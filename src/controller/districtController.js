@@ -13,7 +13,7 @@ exports.getAllDistricts = async (req, res) => {
 
 exports.createDistrict = async (req, res) => {
   try {
-    const { district_name, post_office_name, pincode, state } = req.body;
+    const { district_name, post_office_name, pincode, state, division } = req.body;
 
     const existing = await District.findOne({ where: { district_name } });
     if (existing) {
@@ -24,12 +24,26 @@ exports.createDistrict = async (req, res) => {
       district_name,
       post_office_name,
       pincode,
-      state
+      state,
+      division
     });
 
     res.status(201).json(newDistrict);
   } catch (error) {
     res.status(500).json({ error: "Failed to create district" });
+  }
+};
+
+// Update district
+exports.updateDistrict = async (req, res) => {
+  try {
+    const district = await District.findByPk(req.params.id);
+    if (!district) return res.status(404).json({ error: "District not found" });
+    const { district_name, post_office_name, pincode, state, division } = req.body;
+    await district.update({ district_name, post_office_name, pincode, state, division });
+    res.status(200).json(district);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update district" });
   }
 };
 

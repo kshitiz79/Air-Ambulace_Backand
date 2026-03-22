@@ -6,6 +6,7 @@ const User = require("./../model/User");
 const dotenv = require("dotenv");
 const { sendMail } = require('../config/email');
 const path = require('path');
+const { log, getIp } = require('../middleware/activityLogger');
 
 const otpStore = new Map(); // Store OTPs in memory
 
@@ -15,8 +16,8 @@ dotenv.config();
 const ALLOWED_ROLES = ["BENEFICIARY", "CMHO", "SDM", "COLLECTOR", "ADMIN", "SERVICE_PROVIDER", "HOSPITAL", "SUPPORT", "DME"];
 
 // Helper function to generate JWT token
-const generateToken = (user_id, role) => {
-  return jwt.sign({ user_id, role }, process.env.JWT_SECRET, { expiresIn: "1h" });
+const generateToken = (user_id, role, district_id) => {
+  return jwt.sign({ user_id, role, district_id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 };
 
 // Validate role
@@ -97,6 +98,7 @@ const login = async (req, res) => {
 
     if (!user) {
       console.log('User not found in database');
+      await log({ action: 'LOGIN_FAILED', resource: 'auth', description: `Login failed: email ${email} not found`, ip_address: getIp(req), user_agent: req.headers['user-agent'], status: 'FAILED', method: 'POST', endpoint: '/api/auth/login' });
       return res.status(404).json({
         message: "User not found",
         success: false
@@ -105,6 +107,7 @@ const login = async (req, res) => {
 
     if (user.status && user.status !== 'active') {
       console.log(`User login blocked: Status is ${user.status}`);
+      await log({ action: 'LOGIN_FAILED', resource: 'auth', user_id: user.user_id, username: user.username, role: user.role, description: `Login blocked: account ${user.status}`, ip_address: getIp(req), user_agent: req.headers['user-agent'], status: 'FAILED', method: 'POST', endpoint: '/api/auth/login' });
       return res.status(403).json({
         message: "Your account has been disabled. Please contact the administrator.",
         success: false
@@ -116,6 +119,7 @@ const login = async (req, res) => {
     console.log('Password match:', isMatch);
 
     if (!isMatch) {
+      await log({ action: 'LOGIN_FAILED', resource: 'auth', user_id: user.user_id, username: user.username, role: user.role, description: `Login failed: wrong password for ${user.username}`, ip_address: getIp(req), user_agent: req.headers['user-agent'], status: 'FAILED', method: 'POST', endpoint: '/api/auth/login' });
       return res.status(400).json({
         message: "Invalid credentials",
         success: false
@@ -123,19 +127,23 @@ const login = async (req, res) => {
     }
 
     console.log('Generating token for user:', user.user_id, 'role:', user.role);
-    const token = generateToken(user.user_id, user.role);
+    const token = generateToken(user.user_id, user.role, user.district_id);
+
+    // Log successful login
+    await log({ action: 'LOGIN', resource: 'auth', user_id: user.user_id, username: user.username, role: user.role, description: `${user.username} (${user.role}) logged in successfully`, ip_address: getIp(req), user_agent: req.headers['user-agent'], status: 'SUCCESS', method: 'POST', endpoint: '/api/auth/login' });
 
     console.log('Login successful, sending response');
     return res.status(200).json({
       message: "Login successful",
       success: true,
       token,
-      role: user.role, // Already normalized in DB
+      role: user.role,
       district_id: user.district_id,
       userId: user.user_id,
       full_name: user.full_name,
       username: user.username,
-      email: user.email
+      email: user.email,
+      must_change_password: user.must_change_password || false
     });
   } catch (error) {
     console.error('Login error details:', {
@@ -186,7 +194,8 @@ const createUser = async (req, res) => {
       password_hash,
       full_name,
       email,
-      role: normalizedRole
+      role: normalizedRole,
+      must_change_password: true   // force password change on first login
     });
 
     return res.status(201).json({
@@ -320,4 +329,29 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { signup, login, createUser, forgotPassword, verifyOtp, resetPassword };
+module.exports = { signup, login, createUser, forgotPassword, verifyOtp, resetPassword, changePassword };
+
+// Change password (authenticated — used for forced first-login change)
+async function changePassword(req, res) {
+  const { newPassword } = req.body;
+  const userId = req.user?.user_id;
+
+  if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+  }
+
+  try {
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    user.password_hash = await bcrypt.hash(newPassword, 10);
+    user.must_change_password = false;
+    await user.save();
+
+    return res.status(200).json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+}

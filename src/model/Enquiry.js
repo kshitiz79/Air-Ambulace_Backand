@@ -9,13 +9,10 @@ const Enquiry = sequelize.define('Enquiry', {
     autoIncrement: true
   },
   enquiry_code: {
-    type: DataTypes.STRING(13),
+    type: DataTypes.STRING(20),
     allowNull: false,
     unique: true,
-    validate: {
-      is: /^ENQ[0-9]{10}$/
-    }
-    // no defaultValue here; we set it in beforeValidate
+    // no regex validate — format is now DISTPREFIX-XXXXXXXXXX
   },
   patient_name: { type: DataTypes.STRING(100), allowNull: false },
   identity_card_type: { 
@@ -41,10 +38,14 @@ const Enquiry = sequelize.define('Enquiry', {
   status: {
     type: DataTypes.ENUM(
       'PENDING','FORWARDED','APPROVED','REJECTED',
-      'ESCALATED','IN_PROGRESS','COMPLETED'
+      'ESCALATED','IN_PROGRESS','COMPLETED','COLLECTOR_APPROVED'
     ),
     defaultValue: 'PENDING'
   },
+  // Collector approval tracking (for Out of Division two-step flow)
+  collector_approved_by: { type: DataTypes.BIGINT, allowNull: true },
+  collector_approved_at: { type: DataTypes.DATE, allowNull: true },
+  collector_name: { type: DataTypes.STRING(150), allowNull: true },
   created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   father_spouse_name: { type: DataTypes.STRING(100), allowNull: false },
@@ -103,7 +104,18 @@ const Enquiry = sequelize.define('Enquiry', {
     checkIdentityFields() {
       // Skip validation during updates if identity fields are not being changed
       if (this.isNewRecord || this.changed('identity_card_type') || this.changed('ayushman_card_number') || this.changed('aadhar_card_number') || this.changed('pan_card_number')) {
-        
+
+        // PAID SEVA — only Aadhaar required, skip Ayushman card entirely
+        if (this.air_transport_type === 'Paid') {
+          if (!this.aadhar_card_number) {
+            throw new Error('Aadhar card number is required for Paid Seva');
+          }
+          if (!/^\d{12}$/.test(this.aadhar_card_number)) {
+            throw new Error('Aadhar card number must be exactly 12 digits');
+          }
+          return; // skip rest of identity validation
+        }
+
         if (this.identity_card_type) {
           // ABHA or PM JAY selected - validate accordingly
           if (this.identity_card_type === 'ABHA') {
@@ -122,17 +134,11 @@ const Enquiry = sequelize.define('Enquiry', {
             }
           }
         } else {
-          // No identity card type selected - must have both Aadhar and PAN
-          if (!this.aadhar_card_number || !this.pan_card_number) {
-            throw new Error('Either select ABHA/PM JAY identity type or provide both Aadhar and PAN card numbers');
-          }
-          
-          // Validate Aadhar format (12 digits)
+          // No identity card type selected — Aadhar is optional but if provided must be 12 digits
           if (this.aadhar_card_number && !/^\d{12}$/.test(this.aadhar_card_number)) {
             throw new Error('Aadhar card number must be exactly 12 digits');
           }
-          
-          // Validate PAN format (ABCDE1234F)
+          // PAN if provided must match format
           if (this.pan_card_number && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(this.pan_card_number)) {
             throw new Error('PAN card number must follow format ABCDE1234F');
           }
@@ -145,13 +151,24 @@ const Enquiry = sequelize.define('Enquiry', {
     // ensure enquiry_code exists before validation
     beforeValidate: enquiry => {
       if (!enquiry.enquiry_code) {
-        enquiry.enquiry_code = `ENQ${Math.floor(Math.random() * 1e10).toString().padStart(10, '0')}`;
+        enquiry.enquiry_code = `TMP${Math.floor(Math.random() * 1e10).toString().padStart(10, '0')}`;
       }
     },
-    // once we have the ID, generate the final code
+    // once we have the ID + district, generate the final city-prefixed code
     afterCreate: async (enquiry, options) => {
-      const code = `ENQ${enquiry.enquiry_id.toString().padStart(10, '0')}`;
-      await enquiry.update({ enquiry_code: code }, { hooks: false });
+      try {
+        const District = require('./District');
+        const district = await District.findByPk(enquiry.district_id, { attributes: ['district_name'] });
+        // Build 3-letter prefix from district name e.g. "Bhopal" → "BHO"
+        const raw = (district?.district_name || 'ENQ').replace(/\s+/g, '');
+        const prefix = raw.substring(0, 3).toUpperCase();
+        const code = `${prefix}-${enquiry.enquiry_id.toString().padStart(10, '0')}`;
+        await enquiry.update({ enquiry_code: code }, { hooks: false });
+      } catch {
+        // fallback to old format if district lookup fails
+        const code = `ENQ-${enquiry.enquiry_id.toString().padStart(10, '0')}`;
+        await enquiry.update({ enquiry_code: code }, { hooks: false });
+      }
     }
   }
 });
