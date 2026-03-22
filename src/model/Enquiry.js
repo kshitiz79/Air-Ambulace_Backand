@@ -52,23 +52,23 @@ const Enquiry = sequelize.define('Enquiry', {
   age: { type: DataTypes.INTEGER, allowNull: false },
   gender: { type: DataTypes.ENUM('Male','Female','Other'), allowNull: false },
   address: { type: DataTypes.TEXT, allowNull: false },
-  chief_complaint: { type: DataTypes.TEXT, allowNull: false },
-  general_condition: { type: DataTypes.STRING(50), allowNull: false },
+  chief_complaint: { type: DataTypes.TEXT, allowNull: true },
+  general_condition: { type: DataTypes.STRING(50), allowNull: true },
   vitals: { type: DataTypes.ENUM('Stable','Unstable'), allowNull: false },
-  referring_physician_name: { type: DataTypes.STRING(100), allowNull: false },
-  referring_physician_designation: { type: DataTypes.STRING(100), allowNull: false },
+  referring_physician_name: { type: DataTypes.STRING(100), allowNull: true },
+  referring_physician_designation: { type: DataTypes.STRING(100), allowNull: true },
   referral_note: { type: DataTypes.TEXT, allowNull: true },
   transportation_category: {
     type: DataTypes.ENUM(
       'Within Division','Out of Division','Out of State'
     ),
-    allowNull: false
+    allowNull: true
   },
   air_transport_type: { type: DataTypes.ENUM('Free','Paid'), allowNull: false },
-  recommending_authority_name: { type: DataTypes.STRING(100), allowNull: false },
-  recommending_authority_designation: { type: DataTypes.STRING(100), allowNull: false },
-  approval_authority_name: { type: DataTypes.STRING(100), allowNull: false },
-  approval_authority_designation: { type: DataTypes.STRING(100), allowNull: false },
+  recommending_authority_name: { type: DataTypes.STRING(100), allowNull: true },
+  recommending_authority_designation: { type: DataTypes.STRING(100), allowNull: true },
+  approval_authority_name: { type: DataTypes.STRING(100), allowNull: true },
+  approval_authority_designation: { type: DataTypes.STRING(100), allowNull: true },
   bed_availability_confirmed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   als_ambulance_arranged: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   ambulance_registration_number: { type: DataTypes.STRING(50), allowNull: true },

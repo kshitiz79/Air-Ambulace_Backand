@@ -329,7 +329,81 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { signup, login, createUser, forgotPassword, verifyOtp, resetPassword, changePassword };
+const bulkCreateUsers = async (req, res) => {
+  const adminRole = 'ADMIN';
+
+  if (req.user.role !== adminRole) {
+    return res.status(403).json({
+      message: "Only Admin can create users",
+      success: false
+    });
+  }
+
+  const users = req.body;
+  if (!Array.isArray(users)) {
+    return res.status(400).json({
+      message: "Input should be an array of users",
+      success: false
+    });
+  }
+
+  const results = {
+    success: [],
+    failed: []
+  };
+
+  try {
+    const defaultPasswordHash = await bcrypt.hash("AirAmbulance@123", 10);
+
+    for (const userData of users) {
+      const { username, full_name, email, role, district_id, phone } = userData;
+
+      try {
+        // Validate role
+        const normalizedRole = validateRole(role);
+
+        // Check for existing username/email
+        const existingUser = await User.findOne({
+          where: { [Sequelize.Op.or]: [{ username }, { email }] }
+        });
+
+        if (existingUser) {
+          results.failed.push({ username, reason: "Username or Email already exists" });
+          continue;
+        }
+
+        await User.create({
+          username,
+          password_hash: defaultPasswordHash,
+          full_name,
+          email,
+          phone,
+          role: normalizedRole,
+          district_id,
+          must_change_password: true
+        });
+
+        results.success.push({ username });
+      } catch (err) {
+        results.failed.push({ username, reason: err.message });
+      }
+    }
+
+    return res.status(201).json({
+      message: `Bulk creation completed: ${results.success.length} succeeded, ${results.failed.length} failed`,
+      success: true,
+      results
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: error.message || "Error in bulk user creation",
+      success: false,
+      error
+    });
+  }
+};
+
+module.exports = { signup, login, createUser, bulkCreateUsers, forgotPassword, verifyOtp, resetPassword, changePassword };
 
 // Change password (authenticated — used for forced first-login change)
 async function changePassword(req, res) {

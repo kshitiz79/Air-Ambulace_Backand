@@ -72,13 +72,15 @@ exports.createEnquiry = async (req, res) => {
 
     const { en: enFields, hi: hiFields } = await translateFields(textFields, sourceLang);
 
+    const isPaid = air_transport_type === 'Paid';
+
     const enquiry = await Enquiry.create({
       // Use English as the canonical stored value
       patient_name: enFields.patient_name,
-      identity_card_type,
-      ayushman_card_number,
-      aadhar_card_number,
-      pan_card_number,
+      identity_card_type: (identity_card_type && identity_card_type !== '') ? identity_card_type : null,
+      ayushman_card_number: ayushman_card_number || null,
+      aadhar_card_number: aadhar_card_number || null,
+      pan_card_number: pan_card_number || null,
       medical_condition: enFields.medical_condition,
       hospital_id,
       source_hospital_id,
@@ -91,24 +93,23 @@ exports.createEnquiry = async (req, res) => {
       age,
       gender,
       address: enFields.address,
-      chief_complaint: enFields.chief_complaint,
-      general_condition: enFields.general_condition,
+      chief_complaint: isPaid ? null : (enFields.chief_complaint || null),
+      general_condition: isPaid ? null : (enFields.general_condition || null),
       vitals,
-      referring_physician_name: enFields.referring_physician_name,
-      referring_physician_designation: enFields.referring_physician_designation,
-      referral_note: enFields.referral_note,
-      transportation_category,
-      air_transport_type,
-      recommending_authority_name: enFields.recommending_authority_name,
-      recommending_authority_designation: enFields.recommending_authority_designation,
-      approval_authority_name: enFields.approval_authority_name,
-      approval_authority_designation: enFields.approval_authority_designation,
+      referring_physician_name: isPaid ? null : (enFields.referring_physician_name || null),
+      referring_physician_designation: isPaid ? null : (enFields.referring_physician_designation || null),
+      referral_note: enFields.referral_note || null,
+      transportation_category: isPaid ? null : (transportation_category || null),      air_transport_type,
+      recommending_authority_name: isPaid ? null : (enFields.recommending_authority_name || null),
+      recommending_authority_designation: isPaid ? null : (enFields.recommending_authority_designation || null),
+      approval_authority_name: isPaid ? null : (enFields.approval_authority_name || null),
+      approval_authority_designation: isPaid ? null : (enFields.approval_authority_designation || null),
       bed_availability_confirmed: bed_availability_confirmed === '1' || bed_availability_confirmed === true,
       als_ambulance_arranged: als_ambulance_arranged === '1' || als_ambulance_arranged === true,
-      ambulance_registration_number,
-      ambulance_contact,
-      medical_team_note: enFields.medical_team_note,
-      remarks: enFields.remarks,
+      ambulance_registration_number: isPaid ? null : (ambulance_registration_number || null),
+      ambulance_contact: isPaid ? null : (ambulance_contact || null),
+      medical_team_note: enFields.medical_team_note || null,
+      remarks: enFields.remarks || null,
       status: (escalate_case === 'true' || escalate_case === true) ? 'ESCALATED' : 'PENDING',
 
       // Hindi translations
@@ -116,15 +117,15 @@ exports.createEnquiry = async (req, res) => {
       father_spouse_name_hi: hiFields.father_spouse_name,
       address_hi: hiFields.address,
       medical_condition_hi: hiFields.medical_condition,
-      chief_complaint_hi: hiFields.chief_complaint,
-      general_condition_hi: hiFields.general_condition,
+      chief_complaint_hi: isPaid ? null : hiFields.chief_complaint,
+      general_condition_hi: isPaid ? null : hiFields.general_condition,
       referral_note_hi: hiFields.referral_note,
-      recommending_authority_name_hi: hiFields.recommending_authority_name,
-      recommending_authority_designation_hi: hiFields.recommending_authority_designation,
-      approval_authority_name_hi: hiFields.approval_authority_name,
-      approval_authority_designation_hi: hiFields.approval_authority_designation,
-      referring_physician_name_hi: hiFields.referring_physician_name,
-      referring_physician_designation_hi: hiFields.referring_physician_designation,
+      recommending_authority_name_hi: isPaid ? null : hiFields.recommending_authority_name,
+      recommending_authority_designation_hi: isPaid ? null : hiFields.recommending_authority_designation,
+      approval_authority_name_hi: isPaid ? null : hiFields.approval_authority_name,
+      approval_authority_designation_hi: isPaid ? null : hiFields.approval_authority_designation,
+      referring_physician_name_hi: isPaid ? null : hiFields.referring_physician_name,
+      referring_physician_designation_hi: isPaid ? null : hiFields.referring_physician_designation,
       medical_team_note_hi: hiFields.medical_team_note,
       remarks_hi: hiFields.remarks,
       contact_name_hi: hiFields.contact_name,
@@ -220,7 +221,12 @@ exports.createEnquiry = async (req, res) => {
       });
     }
     console.error(err);
-    res.status(500).json({ success: false, message: 'Failed to create enquiry', error: err.message });
+    // Return the actual DB/sequelize error so frontend can show it
+    res.status(500).json({
+      success: false,
+      message: err.message || 'Failed to create enquiry',
+      error: err.original?.message || err.message
+    });
   }
 };
 
