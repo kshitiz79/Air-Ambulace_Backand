@@ -12,7 +12,9 @@ app.use(cors({
   origin: [
     'https://airambulance.jetserveaviation.com',
     'http://localhost:5173',
-    'https://www.jetserveaviation.com'
+    'https://www.jetserveaviation.com',
+    'https://airambulance.flyola.in',
+    'https://www.airambulance.flyola.in/'
   ],
   credentials: true
 }));
