@@ -144,16 +144,18 @@ const markAllAsRead = async (req, res) => {
   }
 };
 
-// Create notification for all users except CMHO role
-const createNotificationForAllExceptCMHO = async (message, enquiryId = null, type = 'IN_APP') => {
+// Create notification for all users (including CMHO)
+// excludeRoles: optional array of roles to skip, defaults to empty (all included)
+const createNotificationForAllExceptCMHO = async (message, enquiryId = null, type = 'IN_APP', excludeRoles = []) => {
   try {
-    // Get all users except CMHO role
+    const whereClause = {};
+    if (excludeRoles && excludeRoles.length > 0) {
+      whereClause.role = { [Op.notIn]: excludeRoles };
+    }
+
+    // Get all relevant users
     const users = await User.findAll({
-      where: {
-        role: {
-          [Op.ne]: 'CMHO'
-        }
-      },
+      where: whereClause,
       attributes: ['user_id']
     });
 
@@ -168,7 +170,7 @@ const createNotificationForAllExceptCMHO = async (message, enquiryId = null, typ
 
     await Notification.bulkCreate(notifications);
 
-    console.log(`Created ${notifications.length} notifications for new enquiry`);
+    console.log(`Created ${notifications.length} notifications`);
     return { success: true, count: notifications.length };
   } catch (error) {
     console.error('Create notification error:', error);

@@ -247,21 +247,15 @@ exports.getAllEnquiries = async (req, res) => {
       if (!user.district_id) {
         return res.status(403).json({ success: false, message: 'Collector account has no district assigned.' });
       }
-      whereClause.district_id = user.district_id;
+      
+      // FIX: Filter by the district of the CHMO who SUBMITTED it, not the destination district.
+      whereClause['$submittedBy.district_id$'] = user.district_id;
       whereClause.transportation_category = { [require('sequelize').Op.in]: ['Within Division', 'Out of Division'] };
     } else if (user && user.role === 'DME') {
-      // DME sees:
-      // 1. Out of State cases (any status — direct DME jurisdiction)
-      // 2. Out of Division cases that are COLLECTOR_APPROVED (waiting for DME final approval)
+      // DME sees all cases across all districts for state-wide monitoring
       const { Op } = require('sequelize');
-      whereClause = {
-        [Op.or]: [
-          { transportation_category: 'Out of State' },
-          {
-            transportation_category: 'Out of Division',
-            status: 'COLLECTOR_APPROVED'
-          }
-        ]
+      whereClause.transportation_category = { 
+        [Op.in]: ['Within Division', 'Out of Division', 'Out of State'] 
       };
     }
 
@@ -497,8 +491,10 @@ exports.approveOrRejectEnquiry = async (req, res) => {
     const { id } = req.params;
     const { action } = req.body;
     const { user } = req;
+    console.log(`[APPROVE_REJECT] Entry - ID: ${id}, Action: ${action}, User:`, user?.user_id, user?.role);
 
     if (!['APPROVE', 'REJECT'].includes(action)) {
+      console.log(`[APPROVE_REJECT] 400: Invalid action: ${action}`);
       return res.status(400).json({ success: false, message: 'Invalid action. Use APPROVE or REJECT' });
     }
 
@@ -543,49 +539,60 @@ exports.approveOrRejectEnquiry = async (req, res) => {
 
         const collectorUser = await User.findByPk(user.user_id, { attributes: ['full_name'] });
 
-        if (enquiry.transportation_category === 'Out of Division') {
-          // Two-step: Collector approves → COLLECTOR_APPROVED, then DME gives final approval
-          await enquiry.update({
-            status: 'COLLECTOR_APPROVED',
-            collector_approved_by: user.user_id,
-            collector_approved_at: new Date(),
-            collector_name: collectorUser?.full_name || `Collector #${user.user_id}`,
-          });
-          return res.json({
-            success: true,
-            message: 'Enquiry approved by Collector. Forwarded to DME for final approval.',
-            data: enquiry
-          });
-        } else {
-          // Within Division: Collector is the final approver
-          await enquiry.update({
-            status: 'APPROVED',
-            collector_approved_by: user.user_id,
-            collector_approved_at: new Date(),
-            collector_name: collectorUser?.full_name || `Collector #${user.user_id}`,
-          });
-          return res.json({ success: true, message: 'Enquiry approved by Collector', data: enquiry });
-        }
+        // Within Division and Out of Division: Both require two-step (Collector -> DME)
+        await enquiry.update({
+          status: 'COLLECTOR_APPROVED',
+          collector_approved_by: user.user_id,
+          collector_approved_at: new Date(),
+          collector_name: collectorUser?.full_name || `Collector #${user.user_id}`,
+        });
+        
+        return res.json({
+          success: true,
+          message: `Enquiry approved by Collector. Forwarded to DME for final approval.`,
+          data: enquiry
+        });
 
       } else if (user.role === 'DME') {
-        // DME handles: Out of State (direct) + Out of Division (after Collector approval)
-        if (enquiry.transportation_category === 'Within Division') {
-          return res.status(403).json({ success: false, message: 'Within Division cases are handled by the Collector only.' });
+        console.log(`[APPROVE_REJECT] Entering DME block for ID: ${id}`);
+        // DME handles all final approvals after Collector approval (except direct Out-of-State)
+        const isLegacyApproved = enquiry.status === 'APPROVED' && !enquiry.dme_approved_by;
+        
+        if (enquiry.transportation_category !== 'Out of State' && enquiry.status !== 'COLLECTOR_APPROVED' && !isLegacyApproved) {
+          return res.status(403).json({ success: false, message: 'This case must be approved by the Collector first.' });
         }
-        if (enquiry.transportation_category === 'Out of Division' && enquiry.status !== 'COLLECTOR_APPROVED') {
-          return res.status(403).json({ success: false, message: 'Out of Division cases must be approved by the Collector first.' });
+        
+        // Prevent double DME approval
+        if (enquiry.dme_approved_by && action === 'APPROVE') {
+           return res.status(400).json({ success: false, message: 'This case has already been sanctioned by the DME.' });
         }
+        
         if (enquiry.transportation_category === 'Out of State' && ['APPROVED', 'REJECTED'].includes(enquiry.status)) {
           return res.status(400).json({ success: false, message: `Enquiry already ${enquiry.status.toLowerCase()}` });
         }
 
-        await enquiry.update({ status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED' });
+        const dmeUser = await User.findByPk(user.user_id, { attributes: ['full_name'] });
+        
+        await enquiry.update({ 
+          status: action === 'APPROVE' ? 'DME_APPROVED' : 'REJECTED',
+          dme_approved_by: user.user_id,
+          dme_approved_at: new Date(),
+          dme_name: dmeUser?.full_name || `DME #${user.user_id}`
+        });
+        console.log(`[APPROVE_REJECT] Success for DME: ${user.user_id}`);
         return res.json({ success: true, message: `Enquiry ${action.toLowerCase()}d by DME`, data: enquiry });
+      } else {
+        console.log(`[APPROVE_REJECT] 400: User role ${user?.role} not authorized for ID ${id}`);
+        return res.status(403).json({ success: false, message: 'You are not authorized for this action' });
       }
+    } else {
+      console.log(`[APPROVE_REJECT] 400: No user on request`);
+      return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    // Fallback for non-role-checked calls (admin etc.)
-    if (['APPROVED', 'REJECTED'].includes(enquiry.status)) {
+    // Role-agnostic checks (admins etc.)
+    console.log(`[APPROVE_REJECT] Reached Fallback with status: ${enquiry.status}`);
+    if (['APPROVED', 'REJECTED', 'DME_APPROVED'].includes(enquiry.status)) {
       return res.status(400).json({ success: false, message: `Enquiry already ${enquiry.status.toLowerCase()}` });
     }
     await enquiry.update({ status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED' });

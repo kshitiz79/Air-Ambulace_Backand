@@ -38,7 +38,7 @@ const Enquiry = sequelize.define('Enquiry', {
   status: {
     type: DataTypes.ENUM(
       'PENDING','FORWARDED','APPROVED','REJECTED',
-      'ESCALATED','IN_PROGRESS','COMPLETED','COLLECTOR_APPROVED'
+      'ESCALATED','IN_PROGRESS','COMPLETED','COLLECTOR_APPROVED','DME_APPROVED'
     ),
     defaultValue: 'PENDING'
   },
@@ -46,6 +46,9 @@ const Enquiry = sequelize.define('Enquiry', {
   collector_approved_by: { type: DataTypes.BIGINT, allowNull: true },
   collector_approved_at: { type: DataTypes.DATE, allowNull: true },
   collector_name: { type: DataTypes.STRING(150), allowNull: true },
+  dme_approved_by: { type: DataTypes.BIGINT, allowNull: true },
+  dme_approved_at: { type: DataTypes.DATE, allowNull: true },
+  dme_name: { type: DataTypes.STRING(150), allowNull: true },
   created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   father_spouse_name: { type: DataTypes.STRING(100), allowNull: false },

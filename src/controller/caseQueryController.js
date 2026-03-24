@@ -103,7 +103,9 @@ exports.getAllCaseQueries = async (req, res) => {
     // If user is CMHO, filter to show only queries related to their enquiries
     if (user && user.role === 'CMHO') {
       includeOptions[0].where = { submitted_by_user_id: user.user_id };
-      console.log('CMHO filtering applied - showing only queries for enquiries created by user_id:', user.user_id);
+    } else if (user && user.role === 'COLLECTOR') {
+      // Collector sees queries they raised
+      where.raised_by_user_id = user.user_id;
     }
 
     const caseQueries = await CaseQuery.findAll({

@@ -93,7 +93,11 @@ const login = async (req, res) => {
     });
 
     // Find user by email instead of username
-    const user = await User.findOne({ where: { email } });
+    const { District } = require('../model');
+    const user = await User.findOne({ 
+      where: { email },
+      include: [{ model: District, as: 'district', attributes: ['district_name'] }]
+    });
     console.log('User found:', user ? 'Yes' : 'No');
 
     if (!user) {
@@ -139,6 +143,7 @@ const login = async (req, res) => {
       token,
       role: user.role,
       district_id: user.district_id,
+      district_name: user.district?.district_name || '',
       userId: user.user_id,
       full_name: user.full_name,
       username: user.username,
