@@ -42,9 +42,9 @@ const hospitalController = {
         registration_number,
       } = req.body;
 
-      // Validation
-      if (!hospital_name || !district_id) {
-        return res.status(400).json({ success: false, message: 'Hospital name and district ID are required' });
+      // Validation — only hospital_name is required now
+      if (!hospital_name) {
+        return res.status(400).json({ success: false, message: 'Hospital name is required' });
       }
       if (hospital_type && !['GOVERNMENT', 'PRIVATE'].includes(hospital_type)) {
         return res.status(400).json({ success: false, message: 'Hospital type must be GOVERNMENT or PRIVATE' });
@@ -62,10 +62,12 @@ const hospitalController = {
         return res.status(400).json({ success: false, message: 'Invalid contact person email' });
       }
 
-      // Check if district_id exists
-      const district = await District.findByPk(district_id);
-      if (!district) {
-        return res.status(400).json({ success: false, message: 'Invalid district_id' });
+      // Optionally check if district_id exists (only when provided)
+      if (district_id) {
+        const district = await District.findByPk(district_id);
+        if (!district) {
+          return res.status(400).json({ success: false, message: 'Invalid district_id' });
+        }
       }
 
       const newHospital = await Hospital.create({
