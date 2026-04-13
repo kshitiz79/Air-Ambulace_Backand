@@ -13,7 +13,7 @@ const Hospital = sequelize.define("Hospital", {
   },
   district_id: {
     type: DataTypes.BIGINT,
-    allowNull: false
+    allowNull: true
   },
   address: {
     type: DataTypes.TEXT,
