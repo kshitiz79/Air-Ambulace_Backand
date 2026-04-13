@@ -238,19 +238,22 @@ exports.getAllEnquiries = async (req, res) => {
     const { user } = req;
     let whereClause = {};
 
+    const { Op } = require('sequelize');
+
     if (user && user.role === 'CMHO') {
-      // CMHO sees only their own enquiries
-      whereClause.submitted_by_user_id = user.user_id;
+      // CMHO sees enquiries they submitted OR those belonging to their district
+      whereClause[Op.or] = [
+        { submitted_by_user_id: user.user_id },
+        { district_id: user.district_id }
+      ];
     } else if (user && user.role === 'COLLECTOR') {
-      // Collector sees only enquiries from their own district
-      // (Within Division + Out of Division cases — not Out of State)
+      // Collector sees all enquiries from their own district
       if (!user.district_id) {
         return res.status(403).json({ success: false, message: 'Collector account has no district assigned.' });
       }
       
-      // FIX: Filter by the district of the CHMO who SUBMITTED it, not the destination district.
-      whereClause['$submittedBy.district_id$'] = user.district_id;
-      whereClause.transportation_category = { [require('sequelize').Op.in]: ['Within Division', 'Out of Division'] };
+      whereClause.district_id = user.district_id;
+      whereClause.transportation_category = { [Op.in]: ['Within Division', 'Out of Division'] };
     } else if (user && user.role === 'DME') {
       // DME sees all cases across all districts for state-wide monitoring
       const { Op } = require('sequelize');

@@ -5,10 +5,17 @@ const Enquiry = require('../model/Enquiry');
 const getAllFlightAssignments = async (req, res) => {
   try {
     const assignments = await FlightAssignment.findAll({
-      include: [{
-        model: Enquiry,
-        as: 'enquiry'
-      }],
+      include: [
+        {
+          model: Enquiry,
+          as: 'enquiry'
+        },
+        {
+          model: require('../model/CrewMember'),
+          as: 'crewMembers',
+          through: { attributes: [] }
+        }
+      ],
       order: [['created_at', 'DESC']]
     });
     res.json(assignments);
@@ -22,10 +29,17 @@ const getFlightAssignmentById = async (req, res) => {
   try {
     const { id } = req.params;
     const assignment = await FlightAssignment.findByPk(id, {
-      include: [{
-        model: Enquiry,
-        as: 'enquiry'
-      }]
+      include: [
+        {
+          model: Enquiry,
+          as: 'enquiry'
+        },
+        {
+          model: require('../model/CrewMember'),
+          as: 'crewMembers',
+          through: { attributes: [] }
+        }
+      ]
     });
     
     if (!assignment) {
@@ -41,8 +55,18 @@ const getFlightAssignmentById = async (req, res) => {
 // Create new flight assignment
 const createFlightAssignment = async (req, res) => {
   try {
-    const assignment = await FlightAssignment.create(req.body);
-    res.status(201).json(assignment);
+    const { crewMembers, ...assignmentData } = req.body;
+    const assignment = await FlightAssignment.create(assignmentData);
+    
+    if (crewMembers && Array.isArray(crewMembers)) {
+      await assignment.setCrewMembers(crewMembers);
+    }
+    
+    const finalAssignment = await FlightAssignment.findByPk(assignment.assignment_id, {
+      include: [{ model: require('../model/CrewMember'), as: 'crewMembers' }]
+    });
+    
+    res.status(201).json(finalAssignment);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -52,16 +76,25 @@ const createFlightAssignment = async (req, res) => {
 const updateFlightAssignment = async (req, res) => {
   try {
     const { id } = req.params;
-    const [updated] = await FlightAssignment.update(req.body, {
+    const { crewMembers, ...assignmentData } = req.body;
+    
+    const [updated] = await FlightAssignment.update(assignmentData, {
       where: { assignment_id: id }
     });
     
-    if (updated) {
-      const updatedAssignment = await FlightAssignment.findByPk(id);
-      res.json(updatedAssignment);
-    } else {
-      res.status(404).json({ error: 'Flight assignment not found' });
+    const assignment = await FlightAssignment.findByPk(id);
+    if (!assignment) {
+      return res.status(404).json({ error: 'Flight assignment not found' });
     }
+    
+    if (crewMembers && Array.isArray(crewMembers)) {
+      await assignment.setCrewMembers(crewMembers);
+    }
+    
+    const updatedAssignment = await FlightAssignment.findByPk(id, {
+      include: [{ model: require('../model/CrewMember'), as: 'crewMembers' }]
+    });
+    res.json(updatedAssignment);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

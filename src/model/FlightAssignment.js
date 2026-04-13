@@ -66,6 +66,12 @@ FlightAssignment.associate = models => {
     foreignKey: 'ambulance_id',
     as: 'ambulance'
   });
+  FlightAssignment.belongsToMany(models.CrewMember, {
+    through: 'flight_crew_assignments',
+    foreignKey: 'assignment_id',
+    otherKey: 'crew_id',
+    as: 'crewMembers'
+  });
 };
 
 module.exports = FlightAssignment;
