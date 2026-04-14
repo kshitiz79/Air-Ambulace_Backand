@@ -17,7 +17,7 @@ const ALLOWED_ROLES = ["BENEFICIARY", "CMHO", "SDM", "COLLECTOR", "ADMIN", "SERV
 
 // Helper function to generate JWT token
 const generateToken = (user_id, role, district_id) => {
-  return jwt.sign({ user_id, role, district_id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+  return jwt.sign({ user_id, role, district_id }, process.env.JWT_SECRET, { expiresIn: "24h" });
 };
 
 // Validate role
