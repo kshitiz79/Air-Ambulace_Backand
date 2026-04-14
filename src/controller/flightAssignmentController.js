@@ -207,6 +207,24 @@ const deleteFlightAssignment = async (req, res) => {
   }
 };
 
+// Get assignment by enquiry ID
+const getAssignmentByEnquiryId = async (req, res) => {
+  try {
+    const { enquiryId } = req.params;
+    const assignment = await FlightAssignment.findOne({
+      where: { enquiry_id: enquiryId },
+      include: [
+        { model: require('../model/Ambulance'), as: 'ambulance' },
+        { model: require('../model/CrewMember'), as: 'crewMembers', through: { attributes: [] } },
+      ],
+      order: [['created_at', 'DESC']],
+    });
+    res.json({ success: true, data: assignment || null });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 // Get assignments by status
 const getAssignmentsByStatus = async (req, res) => {
   try {
@@ -279,5 +297,6 @@ module.exports = {
   deleteFlightAssignment,
   getAssignmentsByStatus,
   getAssignmentStats,
-  updateAssignmentStatus
+  updateAssignmentStatus,
+  getAssignmentByEnquiryId,
 };

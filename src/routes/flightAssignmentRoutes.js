@@ -8,7 +8,8 @@ const {
   deleteFlightAssignment,
   getAssignmentsByStatus,
   getAssignmentStats,
-  updateAssignmentStatus
+  updateAssignmentStatus,
+  getAssignmentByEnquiryId,
 } = require('../controller/flightAssignmentController');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -19,6 +20,7 @@ router.use(authMiddleware);
 router.get('/', getAllFlightAssignments);
 router.get('/stats', getAssignmentStats);
 router.get('/status/:status', getAssignmentsByStatus);
+router.get('/enquiry/:enquiryId', getAssignmentByEnquiryId);
 router.get('/:id', getFlightAssignmentById);
 router.post('/', createFlightAssignment);
 router.put('/:id', updateFlightAssignment);
