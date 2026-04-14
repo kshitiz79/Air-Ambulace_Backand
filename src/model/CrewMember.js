@@ -50,7 +50,7 @@ const CrewMember = sequelize.define('CrewMember', {
 
 CrewMember.associate = models => {
   CrewMember.belongsToMany(models.FlightAssignment, {
-    through: 'flight_crew_assignments',
+    through: models.FlightCrewAssignment,
     foreignKey: 'crew_id',
     otherKey: 'assignment_id',
     as: 'assignments'

@@ -27,7 +27,7 @@ const Ambulance = sequelize.define('Ambulance', {
     }
   },
   status: {
-    type: DataTypes.ENUM('AVAILABLE', 'IN_USE', 'MAINTENANCE', 'OUT_OF_SERVICE'),
+    type: DataTypes.ENUM('AVAILABLE', 'IN_USE', 'RETURNING', 'MAINTENANCE', 'OUT_OF_SERVICE'),
     defaultValue: 'AVAILABLE',
     allowNull: false
   },
@@ -38,6 +38,11 @@ const Ambulance = sequelize.define('Ambulance', {
   contact_number: {
     type: DataTypes.STRING(15),
     allowNull: true,
+  },
+  return_available_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Scheduled time when RETURNING ambulance becomes AVAILABLE (next day 12:00 IST)',
   },
   created_at: {
     type: DataTypes.DATE,

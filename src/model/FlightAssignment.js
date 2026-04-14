@@ -67,7 +67,7 @@ FlightAssignment.associate = models => {
     as: 'ambulance'
   });
   FlightAssignment.belongsToMany(models.CrewMember, {
-    through: 'flight_crew_assignments',
+    through: models.FlightCrewAssignment,
     foreignKey: 'assignment_id',
     otherKey: 'crew_id',
     as: 'crewMembers'

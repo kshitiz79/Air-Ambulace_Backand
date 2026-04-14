@@ -96,6 +96,10 @@ app.listen(4000, async () => {
     await sequelize.authenticate();
     console.log("Database connected!");
     console.log("Server running on port 4000");
+
+    // Start ambulance return scheduler
+    const { startScheduler } = require('./src/services/ambulanceScheduler');
+    startScheduler();
   } catch (error) {
     console.error("Database connection failed:", error);
   }
