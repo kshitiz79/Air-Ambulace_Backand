@@ -132,8 +132,8 @@ const Enquiry = sequelize.define('Enquiry', {
             if (!this.ayushman_card_number) {
               throw new Error('PM JAY ID is required when PM JAY identity type is selected');
             }
-            if (!/^\d{9}$/.test(this.ayushman_card_number)) {
-              throw new Error('PM JAY ID must be exactly 9 digits');
+            if (!/^[A-Z0-9]{9}$/i.test(this.ayushman_card_number)) {
+              throw new Error('PM JAY ID must be exactly 9 alphanumeric characters');
             }
           }
         } else {

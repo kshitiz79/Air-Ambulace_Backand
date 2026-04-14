@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const { createNotificationForAllExceptCMHO } = require('./notificationController');
 const { translateFields } = require('../services/translateService');
 const { sendEnquiryCreatedNotifications } = require('../services/whatsappService');
+const { sendEnquiryCreatedEmails } = require('../services/emailNotificationService');
 
 // Middleware to extract user from JWT token (optional for backward compatibility)
 const extractUserFromToken = (req, res, next) => {
@@ -202,6 +203,37 @@ exports.createEnquiry = async (req, res) => {
       });
     } catch (waErr) {
       console.error('WhatsApp notification error (non-fatal):', waErr.message);
+    }
+
+    // Send Email notifications (non-blocking)
+    try {
+      const { Op } = require('sequelize');
+      // Get DM/Collector email for this district
+      const dmUser = await User.findOne({
+        where: {
+          district_id: created.district_id,
+          status: 'active',
+          role: { [Op.in]: ['COLLECTOR', 'DM', 'SDM'] }
+        },
+        attributes: ['email'],
+        order: [['role', 'ASC']]
+      });
+
+      // Get extra emails from EmailConfig
+      const EmailConfig = require('../model/EmailConfig');
+      const emailCfg = await EmailConfig.findOne({ where: { is_active: true }, order: [['id', 'DESC']] });
+      const extraEmails = emailCfg?.extra_emails
+        ? emailCfg.extra_emails.split(',').map(e => e.trim()).filter(Boolean)
+        : [];
+
+      await sendEnquiryCreatedEmails({
+        enquiry: created,
+        districtName: created.district?.district_name || null,
+        dmEmail: dmUser?.email || null,
+        extraEmails,
+      });
+    } catch (emailErr) {
+      console.error('Email notification error (non-fatal):', emailErr.message);
     }
 
     res.status(201).json({ success: true, data: created });

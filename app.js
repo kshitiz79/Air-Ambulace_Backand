@@ -38,6 +38,7 @@ const activityLogRoutes = require('./src/routes/activityLogRoutes');
 const medicalConditionRoutes = require('./src/routes/medicalConditionRoutes');
 const whatsappConfigRoutes = require('./src/routes/whatsappConfigRoutes');
 const crewMemberRoutes = require('./src/routes/crewMemberRoutes');
+const emailConfigRoutes = require('./src/routes/emailConfigRoutes');
 const { activityLoggerMiddleware } = require('./src/middleware/activityLogger');
 
 // Global activity logger — logs all mutating requests automatically
@@ -58,6 +59,7 @@ app.use('/api/ambulances', ambulanceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/referral-authorities', referralAuthorityRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
+app.use('/api/email-config', emailConfigRoutes);
 app.use('/api/medical-conditions', medicalConditionRoutes);
 app.use('/api/whatsapp-config', whatsappConfigRoutes);
 app.use('/api/crew-members', crewMemberRoutes);
