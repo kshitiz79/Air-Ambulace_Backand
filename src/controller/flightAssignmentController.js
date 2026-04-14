@@ -225,6 +225,46 @@ const getAssignmentByEnquiryId = async (req, res) => {
   }
 };
 
+// Complete assignment with optional document uploads
+const completeAssignment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const Ambulance = require('../model/Ambulance');
+
+    const assignment = await FlightAssignment.findByPk(id);
+    if (!assignment) return res.status(404).json({ error: 'Assignment not found' });
+
+    const updateData = {
+      status:       'COMPLETED',
+      arrival_time: req.body.arrival_time || null,
+    };
+
+    // Save uploaded file paths
+    if (req.files?.medical_summary?.[0]) {
+      updateData.medical_summary_path = req.files.medical_summary[0].path;
+    }
+    if (req.files?.manifest?.[0]) {
+      updateData.manifest_path = req.files.manifest[0].path;
+    }
+
+    await FlightAssignment.update(updateData, { where: { assignment_id: id } });
+
+    // Release ambulance immediately on completion
+    await Ambulance.update(
+      { status: 'AVAILABLE', return_available_at: null },
+      { where: { ambulance_id: assignment.ambulance_id } }
+    );
+    console.log(`[AUTO] Assignment ${id} COMPLETED → Ambulance ${assignment.ambulance_id} → AVAILABLE`);
+
+    const updated = await FlightAssignment.findByPk(id, {
+      include: [{ model: require('../model/CrewMember'), as: 'crewMembers', through: { attributes: [] } }]
+    });
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Get assignments by status
 const getAssignmentsByStatus = async (req, res) => {
   try {
@@ -299,4 +339,5 @@ module.exports = {
   getAssignmentStats,
   updateAssignmentStatus,
   getAssignmentByEnquiryId,
+  completeAssignment,
 };

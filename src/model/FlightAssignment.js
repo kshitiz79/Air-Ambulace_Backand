@@ -38,6 +38,16 @@ const FlightAssignment = sequelize.define('FlightAssignment', {
     type: DataTypes.DATE,
     allowNull: true,
   },
+  medical_summary_path: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: 'Path to medical summary document uploaded on flight completion',
+  },
+  manifest_path: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: 'Path to flight manifest document uploaded on flight completion',
+  },
   status: {
     type: DataTypes.ENUM('ASSIGNED', 'IN_PROGRESS', 'COMPLETED'),
     defaultValue: 'ASSIGNED',
