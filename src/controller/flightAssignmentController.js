@@ -237,6 +237,7 @@ const completeAssignment = async (req, res) => {
     const updateData = {
       status:       'COMPLETED',
       arrival_time: req.body.arrival_time || null,
+      route_stops:  req.body.route_stops  || null,
     };
 
     // Save uploaded file paths

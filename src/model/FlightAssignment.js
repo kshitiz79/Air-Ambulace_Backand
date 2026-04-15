@@ -48,6 +48,18 @@ const FlightAssignment = sequelize.define('FlightAssignment', {
     allowNull: true,
     comment: 'Path to flight manifest document uploaded on flight completion',
   },
+  route_stops: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON array of intermediate stops: [{stop_label, district, arrival_time, departure_time}]',
+    get() {
+      const raw = this.getDataValue('route_stops');
+      try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+    },
+    set(val) {
+      this.setDataValue('route_stops', val ? JSON.stringify(val) : null);
+    },
+  },
   status: {
     type: DataTypes.ENUM('ASSIGNED', 'IN_PROGRESS', 'COMPLETED'),
     defaultValue: 'ASSIGNED',
