@@ -929,6 +929,20 @@ exports.deleteDocument = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Document not found' });
     }
 
+    // Completely wipe the old document from local disk if it was saved locally
+    const fs = require('fs');
+    const path = require('path');
+    if (document.file_path && !document.file_path.startsWith('http')) {
+      const localPath = path.join(__dirname, '..', '..', document.file_path);
+      if (fs.existsSync(localPath)) {
+        try {
+          fs.unlinkSync(localPath);
+        } catch (e) {
+          console.error("Could not delete local file trace:", e);
+        }
+      }
+    }
+
     // Permanently destroy the document record
     await document.destroy();
 
