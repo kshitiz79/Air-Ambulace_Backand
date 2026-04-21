@@ -1,14 +1,7 @@
 const multer = require('multer');
-const path   = require('path');
-const fs     = require('fs');
 
-const UPLOAD_DIR = path.join(__dirname, '../uploads/flight-docs');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-  filename:    (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
-});
+// Store files in memory so they aren't written to disk
+const storage = multer.memoryStorage();
 
 const flightDocsUpload = multer({
   storage,

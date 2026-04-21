@@ -241,11 +241,22 @@ const completeAssignment = async (req, res) => {
     };
 
     // Save uploaded file paths
+    const { uploadToCloudinary } = require('../services/cloudinaryService');
     if (req.files?.medical_summary?.[0]) {
-      updateData.medical_summary_path = req.files.medical_summary[0].path;
+      try {
+        const fileObj = req.files.medical_summary[0];
+        updateData.medical_summary_path = await uploadToCloudinary(fileObj.buffer, fileObj.originalname);
+      } catch(e) {
+        return res.status(500).json({ success: false, message: `Cloudinary Upload Failed: ${e.message || 'Unknown error'}` });
+      }
     }
     if (req.files?.manifest?.[0]) {
-      updateData.manifest_path = req.files.manifest[0].path;
+      try {
+        const fileObj = req.files.manifest[0];
+        updateData.manifest_path = await uploadToCloudinary(fileObj.buffer, fileObj.originalname);
+      } catch(e) { 
+        return res.status(500).json({ success: false, message: `Cloudinary Upload Failed: ${e.message || 'Unknown error'}` });
+      }
     }
 
     await FlightAssignment.update(updateData, { where: { assignment_id: id } });

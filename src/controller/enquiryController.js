@@ -7,6 +7,7 @@ const { createNotificationForAllExceptCMHO } = require('./notificationController
 const { translateFields } = require('../services/translateService');
 const { sendEnquiryCreatedNotifications } = require('../services/whatsappService');
 const { sendEnquiryCreatedEmails } = require('../services/emailNotificationService');
+const { uploadToCloudinary } = require('../services/cloudinaryService');
 
 // Middleware to extract user from JWT token (optional for backward compatibility)
 const extractUserFromToken = (req, res, next) => {
@@ -150,13 +151,20 @@ exports.createEnquiry = async (req, res) => {
         if (!['AYUSHMAN_CARD', 'ID_PROOF', 'MEDICAL_REPORT', 'EMERGENCY_PROOF', 'OTHER'].includes(type)) {
           return res.status(400).json({ success: false, message: `Invalid document_type: ${type}` });
         }
-        files.forEach(file => {
+        for (const file of files) {
+          let filePath;
+          try {
+            filePath = await uploadToCloudinary(file.buffer, file.originalname);
+          } catch (uploadErr) {
+            console.error(`Cloudinary upload failed for ${file.originalname}:`, uploadErr);
+            return res.status(500).json({ success: false, message: `Cloudinary Upload Failed for ${file.originalname}: ${uploadErr.message || 'Unknown error'}. Check your credentials!` });
+          }
           docs.push({
             enquiry_id: enquiry.enquiry_id,
             document_type: type,
-            file_path: file.path
+            file_path: filePath,
           });
-        });
+        }
       }
       if (docs.length) await Document.bulkCreate(docs);
     }
@@ -431,19 +439,29 @@ exports.updateEnquiry = async (req, res) => {
     await enquiry.update(updateData);
 
     if (req.files) {
-      await Document.destroy({ where: { enquiry_id: id } });
       const docsToCreate = [];
       for (const [document_type, files] of Object.entries(req.files)) {
         if (!['AYUSHMAN_CARD', 'ID_PROOF', 'MEDICAL_REPORT', 'EMERGENCY_PROOF', 'OTHER'].includes(document_type)) {
           return res.status(400).json({ success: false, message: `Invalid document_type: ${document_type}` });
         }
-        files.forEach(file => {
+        
+        // Delete previous documents of this specific type for this enquiry
+        await Document.destroy({ where: { enquiry_id: id, document_type } });
+
+        for (const file of files) {
+          let filePath;
+          try {
+            filePath = await uploadToCloudinary(file.buffer, file.originalname);
+          } catch (uploadErr) {
+            console.error(`Cloudinary upload failed for ${file.originalname}:`, uploadErr);
+            return res.status(500).json({ success: false, message: `Cloudinary Upload Failed for ${file.originalname}: ${uploadErr.message || 'Unknown error'}. Check your credentials!` });
+          }
           docsToCreate.push({
             enquiry_id: id,
             document_type,
-            file_path: file.path,
+            file_path: filePath,
           });
-        });
+        }
       }
       if (docsToCreate.length) {
         await Document.bulkCreate(docsToCreate);

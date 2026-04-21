@@ -44,6 +44,10 @@ const { activityLoggerMiddleware } = require('./src/middleware/activityLogger');
 // Global activity logger — logs all mutating requests automatically
 app.use(activityLoggerMiddleware);
 
+// ── Static file serving for uploaded documents ────────────────────────────
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
+
 app.use('/api/enquiries', enquiryRoutes);
 app.use('/api/case-escalations', caseEscalationRoutes);
 app.use('/api/hospitals', hospitalRoutes);

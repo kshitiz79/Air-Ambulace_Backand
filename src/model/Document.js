@@ -16,7 +16,7 @@ const Document = sequelize.define('Document', {
     allowNull: false,
   },
   file_path: {
-    type: DataTypes.STRING(255),
+    type: DataTypes.TEXT, // Changed from STRING(255) to TEXT to support long cloud URLs
     allowNull: false,
   },
   created_at: {
