@@ -913,6 +913,31 @@ exports.getCMHODashboardStats = async (req, res) => {
   }
 };
 
+exports.deleteDocument = async (req, res) => {
+  try {
+    const { id, documentId } = req.params;
+    
+    // Find the document associated with this enquiry
+    const document = await Document.findOne({ 
+      where: { 
+        enquiry_id: id, 
+        document_id: documentId 
+      } 
+    });
+
+    if (!document) {
+      return res.status(404).json({ success: false, message: 'Document not found' });
+    }
+
+    // Permanently destroy the document record
+    await document.destroy();
+
+    res.json({ success: true, message: 'Document permanently removed' });
+  } catch (error) {
+    console.error('Error removing document:', error);
+    res.status(500).json({ success: false, message: 'Error removing document from the system' });
+  }
+};
+
 // Export the middleware as well
 exports.extractUserFromToken = extractUserFromToken;
-

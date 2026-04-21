@@ -20,5 +20,6 @@ router.patch('/:id/forward', ctl.forwardEnquiryToCollector); // New route
 router.patch('/:id/approve-reject', ctl.approveOrRejectEnquiry);
 router.post('/:id/escalate', ctl.escalateEnquiry); // New escalate route
 router.patch('/:id', upload, ctl.updateEnquiry);
+router.delete('/:id/documents/:documentId', ctl.deleteDocument);
 
 module.exports = router;
