@@ -10,3 +10,17 @@ SELECT enquiry_id, enquiry_code, patient_name, status
 FROM enquiries
 WHERE enquiry_id IN (21, 22, 23, 24, 25)
 ORDER BY enquiry_id;
+
+
+
+
+UPDATE enquiries
+SET status = 'PENDING', updated_at = NOW()
+WHERE enquiry_id IN ( 23, 24, 25);
+
+
+
+
+UPDATE enquiries
+SET status = 'COMPLETED', updated_at = NOW()
+WHERE enquiry_id IN (24);
